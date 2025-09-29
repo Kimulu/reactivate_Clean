@@ -3,6 +3,7 @@ export const challenges = [
   {
     id: "fragments",
     title: "Fragments Challenge",
+    difficulty: "easy",
     instructions: `
       Edit the Summary component so it returns an h1 element and p element wrapped in a React Fragment.
     `,
@@ -77,6 +78,7 @@ describe("Fragments Challenge", () => {
   {
     id: "counter",
     title: "Counter Challenge",
+    difficulty: "medium",
     instructions: `
       Fix the <Counter /> component so the "Increment" button increases the count using useState.
     `,
@@ -163,6 +165,7 @@ describe("Counter Challenge", () => {
   {
     id: "button-style",
     title: "Styled Button Challenge",
+    difficulty: "hard",
     instructions: `
       Create a reusable Button component styled with CSS. 
       It should accept a "label" prop and render a blue button.

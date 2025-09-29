@@ -1,40 +1,66 @@
-import React from "react";
-
-// Define the type for the challenge prop
-interface Challenge {
-  id: number;
-  title: string;
-  description: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-}
+import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 
 interface ChallengeCardProps {
-  challenge: Challenge;
+  id: string;
+  title: string;
+  instructions: string;
+  difficulty?: "Easy" | "Medium" | "Hard";
 }
 
-const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge }) => {
+export function ChallengeCard({
+  id,
+  title,
+  instructions,
+  difficulty,
+}: ChallengeCardProps) {
+  const getDifficultyColor = (difficulty?: string) => {
+    switch (difficulty) {
+      case "easy":
+        return "text-[#06ffa5]";
+      case "medium":
+        return "text-[#4cc9f0]";
+      case "hard":
+        return "text-[#f72585]";
+      default:
+        return "text-white/60";
+    }
+  };
+
   return (
-    <div className="bg-gray-800 rounded-lg p-6 shadow-md transition-transform transform hover:scale-105">
-      <h3 className="text-xl font-semibold mb-2">{challenge.title}</h3>
-      <p className="text-gray-400 mb-4">{challenge.description}</p>
-      <div className="flex items-center justify-between">
-        <span
-          className={`text-sm font-medium ${
-            challenge.difficulty === "Easy"
-              ? "text-green-400"
-              : challenge.difficulty === "Medium"
-              ? "text-yellow-400"
-              : "text-red-400"
-          }`}
-        >
-          {challenge.difficulty}
-        </span>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full transition-colors">
-          Start
-        </button>
+    <div className="bg-gradient-to-br from-[#1a1a2e]/80 to-[#0f0f23]/80 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-[#4cc9f0]/50 transition-all duration-300 group hover:shadow-lg hover:shadow-[#4cc9f0]/20">
+      <div className="space-y-4">
+        {/* Title & Instructions */}
+        <div className="space-y-2">
+          <h3 className="text-xl font-bold text-white font-mono group-hover:gradient-text transition-all duration-300">
+            {title}
+          </h3>
+          {instructions && (
+            <p className="text-white/70 text-sm leading-relaxed">
+              {instructions}
+            </p>
+          )}
+          {difficulty && (
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-white/50">Difficulty:</span>
+              <span
+                className={`text-xs font-medium ${getDifficultyColor(
+                  difficulty
+                )}`}
+              >
+                {difficulty}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Start Button links to challenge page */}
+        <Link href={`/challenges/${id}`} passHref>
+          <Button className="w-full bg-gradient-to-r from-[#4cc9f0] to-[#06ffa5] hover:from-[#06ffa5] hover:to-[#4cc9f0] text-[#0f0f23] font-semibold py-2.5 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-[#4cc9f0]/30">
+            Start
+          </Button>
+        </Link>
       </div>
     </div>
   );
-};
-
-export default ChallengeCard;
+}
