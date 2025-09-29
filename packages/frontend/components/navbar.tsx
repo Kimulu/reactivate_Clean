@@ -46,12 +46,12 @@ export function Navbar() {
 
         {/* Auth Buttons */}
         <div className="hidden md:flex items-center space-x-4">
-          <Link href="/login">
+          <Link href="/Login">
             <button className="px-4 py-2 border border-[#4cc9f0] text-white/90 font-medium rounded-lg hover:bg-[#4cc9f0] hover:text-black transition-colors duration-300">
               Login
             </button>
           </Link>
-          <Link href="/signup">
+          <Link href="/Signup">
             <button className="px-4 py-2 border border-[#06ffa5] text-white/90 font-medium rounded-lg hover:bg-[#06ffa5] hover:text-black transition-colors duration-300">
               Join
             </button>
