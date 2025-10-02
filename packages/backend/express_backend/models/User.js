@@ -10,6 +10,14 @@ const userSchema = new mongoose.Schema({
     unique: true,
     trim: true,
   },
+  // 💡 FIX: Added email field for frontend consistency
+  email: {
+    type: String,
+    unique: true,
+    trim: true,
+    // Assuming email is not mandatory for a basic account, but it's good practice
+    // You might want to set required: true
+  },
   password: {
     type: String,
     required: true,

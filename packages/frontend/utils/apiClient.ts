@@ -1,47 +1,60 @@
 // utils/apiClient.ts
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL as string;
 
-import { User } from "@/types/index";
-import { AuthResponse } from "@/types/index";
-
-const API_BASE_URL = "http://localhost:5000/api";
+// Helper function to get token from localStorage
+const getToken = () => localStorage.getItem("token");
 
 export const apiClient = {
-  // Login function
-  // Corrected login function to parse JSON data
-  loginUser: async (
-    username: string,
-    password: string
-  ): Promise<AuthResponse> => {
-    const response = await fetch(`${API_BASE_URL}/login`, {
+  // Login method using native fetch
+  loginUser: async (username: string, password: string) => {
+    const res = await fetch(`${BASE_URL}/api/login`, {
+      // 💡 FIX: Added /api prefix to match server.js
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Login failed");
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null); // 💡 IMPROVEMENT: Use the specific message from the server response (e.g., "Invalid credentials")
+      throw new Error(errorData?.message || "Login failed");
     }
 
-    // Await and return the JSON data
-    return response.json();
+    return res.json();
   },
 
-  // Corrected function to send username and password
-  signupUser: async (username: string, password: string): Promise<Response> => {
-    return fetch(`${API_BASE_URL}/signup`, {
+  signupUser: async (username: string, password: string) => {
+    // 💡 FIX: Added /api prefix to match server.js
+    const res = await fetch(`${BASE_URL}/api/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
-  },
 
-  // This function is defined to handle other API calls
-  getUserProfile: async (id: string): Promise<User> => {
-    const response = await fetch(`${API_BASE_URL}/users/${id}`);
-    if (!response.ok) {
-      throw new Error("User not found.");
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(errorData?.message || "Failed to signup");
     }
-    return response.json();
+
+    return res.json();
+  }, // Protected route method
+
+  getUserById: async (id: string) => {
+    const token = getToken(); // Retrieve the token
+    if (!token) throw new Error("Authentication token missing.");
+
+    // 💡 FIX: Added /api prefix and Authorization header
+    const res = await fetch(`${BASE_URL}/api/users/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // Pass the JWT
+      },
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(errorData?.message || "Failed to fetch user");
+    }
+
+    return res.json();
   },
 };

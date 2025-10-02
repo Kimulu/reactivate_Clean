@@ -1,21 +1,20 @@
-import { Code, Users, Trophy, Zap } from "lucide-react";
+// components/Sidebar.tsx
+import { Code, Users, Trophy, Zap, User as UserIcon } from "lucide-react";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 
 export function Sidebar() {
+  const user = useSelector((state: RootState) => state.user);
+
   const navItems = [
+    { icon: Code, label: "Challenges", href: "/challenges" },
+    { icon: Users, label: "Community", href: "/community" },
+    { icon: Trophy, label: "Leaderboard", href: "/leaderboard" },
+    // ✅ Dynamically set profile link
     {
-      icon: Code,
-      label: "Challenges",
-      active: true,
-    },
-    {
-      icon: Users,
-      label: "Community",
-      active: false,
-    },
-    {
-      icon: Trophy,
-      label: "Leaderboard",
-      active: false,
+      icon: UserIcon,
+      label: "Profile",
+      href: user?.id ? `/profile/${user.id}` : "/Login",
     },
   ];
 
@@ -39,12 +38,8 @@ export function Sidebar() {
             return (
               <li key={index}>
                 <a
-                  href="#"
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    item.active
-                      ? "bg-gradient-to-r from-[#06ffa5]/20 to-[#4cc9f0]/20 border border-[#4cc9f0]/30 text-white neon-glow"
-                      : "text-white/70 hover:text-white hover:bg-white/5"
-                  }`}
+                  href={item.href}
+                  className="flex items-center space-x-3 px-4 py-3 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-all duration-200"
                 >
                   <Icon size={20} />
                   <span className="font-medium">{item.label}</span>

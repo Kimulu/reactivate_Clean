@@ -10,6 +10,9 @@ export interface User {
 }
 
 export interface AuthResponse {
+  id: string | null;
+  username: string | null;
+  email: string | null;
   user: User;
   token: string;
 }

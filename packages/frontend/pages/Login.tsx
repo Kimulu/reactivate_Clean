@@ -1,52 +1,62 @@
-// pages/Login.tsx
-
-import Link from "next/link";
-import React, { useState, FormEvent } from "react";
+import { useState } from "react";
+import { useDispatch } from "react-redux";
 import { useRouter } from "next/router";
-import { apiClient } from "../utils/apiClient";
-import toast from "react-hot-toast"; // Import toast
+import { setUser } from "@/store/userSlice";
+import { apiClient } from "@/utils/apiClient";
+import toast from "react-hot-toast";
 
-const Login = () => {
+export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch();
   const router = useRouter();
 
-  const handleFormSubmit = async (e: FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
     try {
-      // Call the login API endpoint
-      const response = await apiClient.loginUser(username, password);
+      const data = await apiClient.loginUser(username, password);
 
-      // Save the token and redirect on success
-      localStorage.setItem("token", response.token);
-      toast.success("Logged in successfully! 🎉"); // Display a success toast
+      // LOG 1: Successful Login Response Data: { token: '...', user: { id: '...', username: '...' } }
+      console.log("LOG 1: Successful Login Response Data:", data);
 
-      // Redirect to the challenges page after a short delay to show the toast
-      setTimeout(() => {
-        router.push("/challenges");
-      }, 650);
-    } catch (error: any) {
-      console.error("Login error:", error);
-      toast.error(error.message); // Display an error toast
-    } finally {
-      setIsLoading(false);
+      // 1. Save Token and User Data to Local Storage
+      localStorage.setItem("token", data.token);
+      // We save ONLY the user object to the 'user' key for persistence via AuthLoader.
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // 2. Dispatch ONLY the user object to the Redux store
+      // 💡 FIX: This ensures the reducer gets { id, username } and correctly updates state.
+      dispatch(setUser(data.user));
+
+      console.log("LOG 2: State Saved. Redux Dispatched, localStorage set.");
+      console.log(
+        "LOG 2.1: localStorage user (should be {id, username}):",
+        localStorage.getItem("user")
+      );
+      console.log(
+        "LOG 2.2: Redux Dispatch payload (should be {id, username}):",
+        data.user
+      );
+
+      toast.success("Login successful!");
+      router.push("/challenges");
+    } catch (err: any) {
+      console.error("Login Error:", err);
+      toast.error(err.message || "Login failed");
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">
-          Log In
+    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-[#0f0f23] via-[#1a1a2e] to-[#0f0f23]">
+      <div className="w-full max-w-md p-8 rounded-xl shadow-2xl bg-[#1a1a2e] border border-[#06ffa5]/20">
+        <h1 className="text-4xl font-extrabold text-white mb-6 text-center">
+          Login
         </h1>
-        <form onSubmit={handleFormSubmit} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
             <label
-              className="block text-gray-700 font-semibold mb-1"
               htmlFor="username"
+              className="block text-sm font-medium text-white/70 mb-2"
             >
               Username
             </label>
@@ -55,14 +65,15 @@ const Login = () => {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              className="w-full px-4 py-3 rounded-lg bg-[#0f0f23] border border-white/10 text-white focus:ring-[#06ffa5] focus:border-[#06ffa5] outline-none transition duration-150"
+              placeholder="Enter your username"
             />
           </div>
           <div>
             <label
-              className="block text-gray-700 font-semibold mb-1"
               htmlFor="password"
+              className="block text-sm font-medium text-white/70 mb-2"
             >
               Password
             </label>
@@ -71,28 +82,25 @@ const Login = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              className="w-full px-4 py-3 rounded-lg bg-[#0f0f23] border border-white/10 text-white focus:ring-[#06ffa5] focus:border-[#06ffa5] outline-none transition duration-150"
+              placeholder="Enter your password"
             />
           </div>
           <button
             type="submit"
-            className="w-full py-2 px-4 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-[#06ffa5] to-[#04cc83] text-[#0f0f23] font-bold py-3 rounded-lg hover:from-[#04cc83] hover:to-[#06ffa5] transition-all duration-300 shadow-lg shadow-[#06ffa5]/30"
           >
-            {isLoading ? "Logging In..." : "Log In"}
+            Log In
           </button>
         </form>
-        <div className="mt-6 text-center">
-          <Link href="/Signup">
-            <button className="text-sm text-blue-600 hover:text-blue-800 focus:outline-none">
-              Don't have an account? Sign Up
-            </button>
-          </Link>
-        </div>
+        <p className="mt-6 text-center text-sm text-white/50">
+          Don't have an account?
+          <a href="/signup" className="text-[#06ffa5] hover:underline ml-1">
+            Sign Up
+          </a>
+        </p>
       </div>
     </div>
   );
-};
-
-export default Login;
+}
