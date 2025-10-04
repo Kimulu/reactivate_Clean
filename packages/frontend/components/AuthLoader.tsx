@@ -1,39 +1,74 @@
-import React, { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { setUser } from "../store/userSlice";
-import { RootState } from "../store";
+// components/AuthLoader.tsx
+import { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
+import { setUser, clearUser } from "@/store/userSlice"; // Adjust path as needed
 
-/**
- * AuthLoader component attempts to load user data from localStorage
- * into the Redux store immediately after the application loads.
- */
-export const AuthLoader: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export function AuthLoader({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
-
-  // Check if user is already loaded in Redux to prevent unnecessary localStorage access
-  const user = useSelector((state: RootState) => state.user);
+  const [isAuthLoaded, setIsAuthLoaded] = useState(false); // New state to manage loading
 
   useEffect(() => {
-    // Only run this if the Redux state is currently empty (i.e., on initial app load/refresh)
-    if (!user || !user.id) {
+    // This effect runs ONLY on the client-side, AFTER the initial render
+    if (typeof window === "undefined") {
+      return; // Do nothing on the server
+    }
+
+    const token = localStorage.getItem("token");
+    const storedUserInfo = localStorage.getItem("userInfo");
+
+    if (token && storedUserInfo) {
       try {
-        // Check localStorage for the persistent user object
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          // Re-dispatch the user data to populate the Redux store
-          dispatch(setUser(userData));
+        const userInfo = JSON.parse(storedUserInfo);
+
+        // 💡 Crucial Check: Ensure userInfo has all expected properties
+        if (userInfo.id && userInfo.username && userInfo.email) {
+          dispatch(
+            setUser({
+              id: userInfo.id,
+              username: userInfo.username,
+              email: userInfo.email,
+              token: token, // Re-use the token from localStorage
+            })
+          );
+          console.log("AuthLoader: User state re-hydrated from localStorage.");
+        } else {
+          // If userInfo is incomplete, clear everything
+          console.warn(
+            "AuthLoader: Stored user info incomplete, clearing session."
+          );
+          dispatch(clearUser());
         }
       } catch (error) {
-        // Handle corrupted data by clearing it
-        console.error("Error parsing user data from localStorage:", error);
-        localStorage.removeItem("user");
-        localStorage.removeItem("token");
+        console.error(
+          "AuthLoader: Failed to parse user info from localStorage, clearing session.",
+          error
+        );
+        dispatch(clearUser()); // Clear if JSON parsing fails
       }
+    } else {
+      // If token or userInfo is missing, ensure Redux state is cleared
+      console.log(
+        "AuthLoader: No valid token or user info found in localStorage, ensuring Redux is cleared."
+      );
+      dispatch(clearUser());
     }
-  }, [dispatch, user]);
+
+    setIsAuthLoaded(true); // Mark authentication loading as complete
+  }, [dispatch]); // Depend on dispatch to avoid unnecessary re-runs
+
+  // 💡 Optional: You can show a loading spinner while authentication state is being re-hydrated
+  // if you want to prevent a flicker or content jump.
+  // For now, we'll just render children directly, assuming it's quick.
+  if (!isAuthLoaded) {
+    // You could render a minimal loading spinner here
+    // For now, return children directly to avoid blank screen or flicker
+    // and rely on ProtectedRoute to handle redirection if still unauthenticated.
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0f0f23] via-[#1a1a2e] to-[#0f0f23]">
+        <p className="ml-64 p-8 text-white">Loading application...</p>
+      </div>
+    );
+  }
 
   return <>{children}</>;
-};
+}

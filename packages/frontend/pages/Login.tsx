@@ -1,8 +1,9 @@
+// pages/Login.tsx
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useRouter } from "next/router";
-import { setUser } from "@/store/userSlice";
-import { apiClient } from "@/utils/apiClient";
+import { setUser } from "@/store/userSlice"; // Make sure this path is correct
+import { apiClient } from "@/utils/apiClient"; // Make sure this path is correct
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
@@ -16,30 +17,63 @@ export default function LoginPage() {
     try {
       const data = await apiClient.loginUser(username, password);
 
-      // LOG 1: Successful Login Response Data: { token: '...', user: { id: '...', username: '...' } }
+      // LOG 1: Successful Login Response Data: { token: '...', user: { id: '...', username: '...', email: '...' } }
       console.log("LOG 1: Successful Login Response Data:", data);
 
-      // 1. Save Token and User Data to Local Storage
-      localStorage.setItem("token", data.token);
-      // We save ONLY the user object to the 'user' key for persistence via AuthLoader.
-      localStorage.setItem("user", JSON.stringify(data.user));
+      // --- CRITICAL FIXES BELOW ---
 
-      // 2. Dispatch ONLY the user object to the Redux store
-      // 💡 FIX: This ensures the reducer gets { id, username } and correctly updates state.
-      dispatch(setUser(data.user));
+      // Ensure the backend response has all necessary data before dispatching
+      if (
+        data.token &&
+        data.user &&
+        data.user.id &&
+        data.user.username &&
+        data.user.email
+      ) {
+        // 💡 FIX 1: Dispatch the FULL user payload expected by userSlice.ts
+        // This includes id, username, email (from data.user) and token (from data)
+        dispatch(
+          setUser({
+            id: data.user.id,
+            username: data.user.username,
+            email: data.user.email, // Ensure your backend provides this in data.user
+            token: data.token, // This is the actual JWT from the top-level response
+          })
+        );
 
-      console.log("LOG 2: State Saved. Redux Dispatched, localStorage set.");
-      console.log(
-        "LOG 2.1: localStorage user (should be {id, username}):",
-        localStorage.getItem("user")
-      );
-      console.log(
-        "LOG 2.2: Redux Dispatch payload (should be {id, username}):",
-        data.user
-      );
+        // 💡 FIX 2 & 3: Removed redundant localStorage.setItem calls here.
+        // The setUser reducer (in userSlice.ts) is now solely responsible for
+        // storing the token in localStorage. This centralizes localStorage logic.
 
-      toast.success("Login successful!");
-      router.push("/challenges");
+        console.log(
+          "LOG 2: State Saved. Redux Dispatched, localStorage set by reducer."
+        );
+        // We can't easily log localStorage.getItem("user") now as we aren't storing it separately.
+        // We can log the token directly as it's the main persistent item.
+        console.log(
+          "LOG 2.1: localStorage token (should be JWT string):",
+          localStorage.getItem("token")
+        );
+        console.log(
+          "LOG 2.2: Redux Dispatch payload (should be {id, username, email, token}):",
+          {
+            id: data.user.id,
+            username: data.user.username,
+            email: data.user.email,
+            token: data.token,
+          }
+        );
+
+        toast.success("Login successful!");
+        router.push("/challenges");
+      } else {
+        // This block will catch if the backend response structure is not as expected
+        console.error(
+          "Login failed: Backend response missing token, user object, or user's id/username/email.",
+          data
+        );
+        toast.error("Login failed: Invalid server response data.");
+      }
     } catch (err: any) {
       console.error("Login Error:", err);
       toast.error(err.message || "Login failed");

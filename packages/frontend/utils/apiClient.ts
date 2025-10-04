@@ -22,12 +22,12 @@ export const apiClient = {
     return res.json();
   },
 
-  signupUser: async (username: string, password: string) => {
-    // 💡 FIX: Added /api prefix to match server.js
+  signupUser: async (username: string, email: string, password: string) => {
+    // Accept email
     const res = await fetch(`${BASE_URL}/api/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, email, password }), // Send email in the body
     });
 
     if (!res.ok) {
@@ -35,8 +35,8 @@ export const apiClient = {
       throw new Error(errorData?.message || "Failed to signup");
     }
 
-    return res.json();
-  }, // Protected route method
+    return res.json(); // Return the parsed JSON directly for successful responses
+  },
 
   getUserById: async (id: string) => {
     const token = getToken(); // Retrieve the token

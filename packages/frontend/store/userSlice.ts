@@ -28,21 +28,44 @@ const userSlice = createSlice({
         token: string;
       }>
     ) => {
-      // 💡 LOG 3: Confirm the Redux reducer is hit and the payload is correct
       console.log(
-        "LOG 3: Redux Reducer setUser fired with payload:",
+        "LOG: Redux Reducer setUser fired with payload:",
         action.payload
       );
       state.id = action.payload.id;
       state.username = action.payload.username;
       state.email = action.payload.email;
       state.token = action.payload.token;
+
+      // 💡 FIX 1: Persist token to localStorage
+      if (typeof window !== "undefined") {
+        // Defensive check for SSR
+        localStorage.setItem("token", action.payload.token);
+        // 💡 FIX 2: Also persist relevant user info to localStorage
+        localStorage.setItem(
+          "userInfo",
+          JSON.stringify({
+            id: action.payload.id,
+            username: action.payload.username,
+            email: action.payload.email,
+          })
+        );
+        console.log("LOG: Token and UserInfo stored in localStorage.");
+      }
     },
     clearUser: (state) => {
+      console.log("LOG: Redux Reducer clearUser (logout) fired.");
       state.id = null;
       state.username = null;
       state.email = null;
       state.token = null;
+
+      // 💡 FIX 3: Clear both token and userInfo from localStorage during logout
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("userInfo"); // Clear user info as well
+        console.log("LOG: Token and UserInfo removed from localStorage.");
+      }
     },
   },
 });
