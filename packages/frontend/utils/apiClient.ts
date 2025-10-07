@@ -1,4 +1,24 @@
 // utils/apiClient.ts
+
+// 💡 NEW: Define Challenge types (if not already defined in a global types file)
+interface ChallengeFile {
+  code: string;
+  active?: boolean;
+  hidden?: boolean;
+}
+export interface Challenge {
+  // Export this interface to use in frontend components
+  _id: string; // MongoDB's ID
+  id: string; // Your custom challenge ID (e.g., "fragments")
+  title: string;
+  difficulty: string;
+  instructions: string;
+  files: { [key: string]: ChallengeFile };
+  createdAt?: string;
+  updatedAt?: string;
+  __v?: number;
+}
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL as string;
 
 // Helper function to get token from localStorage
@@ -55,6 +75,45 @@ export const apiClient = {
       throw new Error(errorData?.message || "Failed to fetch user");
     }
 
+    return res.json();
+  },
+
+  // 💡 NEW: Method to fetch challenges from the backend
+  getChallenges: async () => {
+    // Challenges endpoint is currently public, so no token needed.
+    // If you add authentication later, you'd add the Authorization header here.
+    const res = await fetch(`${BASE_URL}/api/challenges`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(errorData?.message || "Failed to fetch challenges");
+    }
+
+    return res.json(); // This will return an array of challenge objects
+  },
+
+  // 💡 NEW: Method to fetch a single challenge by its custom ID
+  getChallengeById: async (challengeId: string): Promise<Challenge> => {
+    const res = await fetch(`${BASE_URL}/api/challenges/${challengeId}`, {
+      // Assuming backend has /api/challenges/:id
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(
+        errorData?.message ||
+          `Failed to fetch challenge with ID: ${challengeId}`
+      );
+    }
     return res.json();
   },
 };

@@ -1,4 +1,4 @@
-// challenges.ts
+// data/challenges.ts
 export const challenges = [
   {
     id: "fragments",
