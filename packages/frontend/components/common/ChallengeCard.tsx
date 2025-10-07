@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+// 💡 NEW IMPORT: CheckCircle icon
+import { CheckCircle } from "lucide-react";
 
 interface ChallengeCardProps {
   id: string;
   title: string;
   instructions: string;
-  difficulty?: "Easy" | "Medium" | "Hard";
+  difficulty?: "easy" | "medium" | "hard"; // 💡 MODIFIED: Use lowercase for consistency with backend enum
+  isCompleted?: boolean; // 💡 NEW PROP: Optional boolean to indicate completion status
 }
 
 export function ChallengeCard({
@@ -13,6 +16,7 @@ export function ChallengeCard({
   title,
   instructions,
   difficulty,
+  isCompleted = false, // 💡 MODIFIED: Default to false if not provided
 }: ChallengeCardProps) {
   const getDifficultyColor = (difficulty?: string) => {
     switch (difficulty) {
@@ -28,7 +32,14 @@ export function ChallengeCard({
   };
 
   return (
-    <div className="bg-gradient-to-br from-[#1a1a2e]/80 to-[#0f0f23]/80 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-[#4cc9f0]/50 transition-all duration-300 group hover:shadow-lg hover:shadow-[#4cc9f0]/20">
+    <div className="relative bg-gradient-to-br from-[#1a1a2e]/80 to-[#0f0f23]/80 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-[#4cc9f0]/50 transition-all duration-300 group hover:shadow-lg hover:shadow-[#4cc9f0]/20">
+      {/* 💡 NEW: Completion Tick Icon - Positioned absolutely at the top right */}
+      {isCompleted && (
+        <div className="absolute top-3 right-3 text-[#06ffa5]">
+          <CheckCircle size={24} /> {/* Adjust size as needed */}
+        </div>
+      )}
+
       <div className="space-y-4">
         {/* Title & Instructions */}
         <div className="space-y-2">
@@ -56,7 +67,7 @@ export function ChallengeCard({
 
         {/* Start Button links to challenge page */}
         <Link href={`/challenges/${id}`} passHref>
-          <Button className="w-full bg-gradient-to-r from-[#4cc9f0] to-[#06ffa5] hover:from-[#06ffa5] hover:to-[#4cc9f0] text-[#0f0f23] font-semibold py-2.5 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-[#4cc9f0]/30">
+          <Button className="w-full bg-gradient-to-r from-[#4cc9f0] to-[#06ffa5] hover:from-[#06ffa5] hover:to-[#4cc9f0] text-[#0f172a] font-semibold py-2.5 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-[#4cc9f0]/30">
             Start
           </Button>
         </Link>

@@ -3,13 +3,21 @@
 const express = require("express");
 const router = express.Router();
 const challengeController = require("../controllers/challengeController");
-// const authMiddleware = require('../middleware/authMiddleware'); // For later security
+// 💡 FIX: Import 'protect' specifically from the middleware module
+const { protect } = require("../middleware/authMiddleware"); // <--- CHANGE THIS LINE
 
-// Public route to get all challenges
-router.get("/", challengeController.getChallenges);
-// 💡 NEW: Route for fetching a single challenge by its custom 'id'
+// 💡 FIX: Place specific routes above general routes
+
+// 1. More Specific Routes (e.g., /completed, /:challengeId/submit)
+router.get("/completed", protect, challengeController.getCompletedChallenges); // <--- MOVE THIS UP
+router.post(
+  "/:challengeId/submit",
+  protect,
+  challengeController.submitChallenge
+);
+
+// 2. General Routes (e.g., / or /:id)
 router.get("/:id", challengeController.getChallengeById);
-
-// You'll add protected routes here later (e.g., router.post('/:id/submit', authMiddleware, challengeController.submitChallenge);)
+router.get("/", challengeController.getChallenges);
 
 module.exports = router;

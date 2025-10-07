@@ -116,7 +116,7 @@ function TestRunner({ challenge }: TestRunnerProps) {
       }
     });
     return () => unsubscribe();
-  }, [listen, sandpack.files, challenge, testsPassed]); // 💡 MODIFIED: Depend on `challenge` prop
+  }, [listen, sandpack.files, challenge, testsPassed]);
 
   useEffect(() => {
     const unsubscribe = listen((msg) => {
@@ -150,9 +150,8 @@ function TestRunner({ challenge }: TestRunnerProps) {
                   console.log("Submission Phase: submitting_code");
 
                   try {
-                    // --- 💡 MODIFIED: Use `challenge` prop for original files ---
-                    const originalFiles = challenge?.files || {};
-                    const editedFilesOutput: { [path: string]: string } = {};
+                    // --- 💡 MODIFIED: Actual API call for submission ---
+                    const editedFilesContent: { [path: string]: string } = {};
 
                     if (
                       !sandpack.files ||
@@ -163,12 +162,6 @@ function TestRunner({ challenge }: TestRunnerProps) {
                       );
                     }
 
-                    console.log(
-                      "✅ Edited file contents for challenge",
-                      challengeId,
-                      ":"
-                    );
-
                     for (const filePath in sandpack.files) {
                       if (
                         Object.prototype.hasOwnProperty.call(
@@ -176,42 +169,31 @@ function TestRunner({ challenge }: TestRunnerProps) {
                           filePath
                         )
                       ) {
-                        const currentFile = sandpack.files[filePath];
-                        const originalFile = originalFiles[filePath];
-
-                        if (
-                          currentFile &&
-                          typeof (currentFile as any).code === "string"
-                        ) {
-                          const currentContent = (currentFile as any).code;
-                          const originalContent =
-                            (originalFile as any)?.code || "";
-
-                          if (currentContent !== originalContent) {
-                            editedFilesOutput[filePath] = currentContent;
-                            console.log(
-                              `--- File: ${filePath} (EDITED) ---\n${currentContent}\n-----------------------`
-                            );
-                          } else {
-                            console.log(`--- File: ${filePath} (UNEDITED) ---`);
-                          }
-                        } else {
-                          console.warn(
-                            `  File: ${filePath} has no valid code content.`
-                          );
+                        const file = sandpack.files[filePath];
+                        if (file && typeof (file as any).code === "string") {
+                          editedFilesContent[filePath] = (file as any).code;
                         }
                       }
                     }
 
-                    if (Object.keys(editedFilesOutput).length === 0) {
-                      console.log(
-                        "No files were edited or changes reverted to original."
+                    if (Object.keys(editedFilesContent).length === 0) {
+                      throw new Error(
+                        "No editable files with content found for submission."
                       );
                     }
-                    // ------------------------------------------------------------------
 
-                    // 2. Simulate backend API call
-                    await new Promise((resolve) => setTimeout(resolve, 1500));
+                    console.log(
+                      "Submitting challenge",
+                      challengeId,
+                      "with code:",
+                      editedFilesContent
+                    );
+
+                    // 💡 NEW: Call apiClient.submitChallenge
+                    await apiClient.submitChallenge(
+                      challengeId as string,
+                      editedFilesContent
+                    );
 
                     setSubmissionPhase("submission_success");
                     toast.success("Challenge completed successfully! 🎉");
@@ -223,11 +205,9 @@ function TestRunner({ challenge }: TestRunnerProps) {
                     }, 1000);
                   } catch (error: any) {
                     setSubmissionPhase("submission_failed");
-                    toast.error(
-                      error.message || "Failed to process submission."
-                    );
+                    toast.error(error.message || "Failed to submit challenge.");
                     console.error("Submission Phase: submission_failed", error);
-                    setIsSubmitModalOpen(false);
+                    setIsSubmitModalOpen(false); // Close modal on failure
                   }
                 }, 800);
               } else {
@@ -255,7 +235,7 @@ function TestRunner({ challenge }: TestRunnerProps) {
     });
 
     return () => unsubscribe();
-  }, [listen, submissionPhase, sandpack.files, challenge, router]); // 💡 MODIFIED: Depend on `challenge` prop
+  }, [listen, submissionPhase, sandpack.files, challenge, router, challengeId]); // 💡 MODIFIED: Added challengeId to dependencies for useEffect
 
   return (
     <div className="flex flex-col h-full">
@@ -447,13 +427,10 @@ function TestRunner({ challenge }: TestRunnerProps) {
 
 export default function ChallengeDetail() {
   const router = useRouter();
-  const { id } = router.query; // This `id` is the challenge ID from the URL
+  const { id } = router.query;
 
-  // 💡 NEW STATE: To store the fetched challenge data
   const [challenge, setChallenge] = useState<Challenge | null>(null);
-  // 💡 NEW STATE: To manage loading status
   const [loading, setLoading] = useState(true);
-  // 💡 NEW STATE: To manage error messages
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -467,7 +444,6 @@ export default function ChallengeDetail() {
       try {
         setLoading(true);
         setError(null);
-        // 💡 NEW: Fetch the challenge using apiClient
         const fetchedChallenge: Challenge = await apiClient.getChallengeById(
           id
         );
@@ -482,9 +458,8 @@ export default function ChallengeDetail() {
     };
 
     fetchIndividualChallenge();
-  }, [id]); // 💡 DEPENDENCY: Re-fetch if `id` changes (e.g., navigating to another challenge)
+  }, [id]);
 
-  // 💡 NEW: Conditional rendering for loading, error, or not found states
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#0f172a] text-white">
@@ -510,13 +485,11 @@ export default function ChallengeDetail() {
     );
   }
 
-  // If challenge data is available, render the Sandpack environment
   return (
     <div className="h-screen flex flex-col bg-[#0f172a] text-white">
       <SandpackProvider
         template="react"
         theme="dark"
-        // 💡 MODIFIED: Use `challenge.files` from the fetched challenge data
         files={challenge.files ?? {}}
         customSetup={{
           dependencies: {
@@ -574,7 +547,6 @@ export default function ChallengeDetail() {
 
         <div className="flex flex-[1] border-t border-gray-700 min-h-0">
           <div className="flex-1 flex flex-col min-h-0">
-            {/* 💡 MODIFIED: Pass the fetched `challenge` prop to TestRunner */}
             <TestRunner challenge={challenge} />
           </div>
         </div>

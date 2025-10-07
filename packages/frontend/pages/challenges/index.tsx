@@ -1,54 +1,50 @@
 // pages/challenges/index.tsx
 import { Sidebar } from "@/components/Sidebar";
 import { ChallengeCard } from "@/components/common/ChallengeCard";
-// 💡 REMOVED: import { challenges } from "@/data/challenges";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { useEffect, useState } from "react"; // 💡 NEW: Import useEffect and useState
-import { apiClient } from "@/utils/apiClient"; // 💡 NEW: Import apiClient
-import toast from "react-hot-toast"; // 💡 NEW: Import toast for error messages
-
-// 💡 NEW: Define Challenge type to match backend response structure
-interface ChallengeFile {
-  code: string;
-  active?: boolean;
-  hidden?: boolean;
-}
-
-interface Challenge {
-  _id: string; // MongoDB's ID
-  id: string; // Your custom challenge ID (e.g., "fragments")
-  title: string;
-  difficulty: string;
-  instructions: string;
-  files: { [key: string]: ChallengeFile };
-  createdAt?: string;
-  updatedAt?: string;
-  __v?: number;
-}
+import { useEffect, useState } from "react";
+import { apiClient, Challenge } from "@/utils/apiClient"; // 💡 MODIFIED: Challenge type is now imported
+import toast from "react-hot-toast";
+import { Loader2 } from "lucide-react"; // 💡 NEW: For loading spinner
 
 export default function Dashboard() {
-  const [challenges, setChallenges] = useState<Challenge[]>([]); // 💡 NEW: State to store fetched challenges
-  const [loading, setLoading] = useState(true); // 💡 NEW: Loading state
-  const [error, setError] = useState<string | null>(null); // 💡 NEW: Error state
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  // 💡 NEW STATE: To store IDs of challenges completed by the user
+  const [completedChallengeIds, setCompletedChallengeIds] = useState<string[]>(
+    []
+  );
 
   useEffect(() => {
-    const fetchChallenges = async () => {
+    const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data: Challenge[] = await apiClient.getChallenges(); // 💡 NEW: Fetch challenges from backend
-        setChallenges(data);
+
+        // Fetch all challenges
+        const challengesData: Challenge[] = await apiClient.getChallenges();
+        setChallenges(challengesData);
+
+        // 💡 NEW: Fetch user's completed challenges (requires authentication)
+        const completedIds: string[] = await apiClient.getCompletedChallenges();
+        setCompletedChallengeIds(completedIds);
+        console.log("Completed Challenge IDs:", completedIds);
       } catch (err: any) {
-        console.error("Failed to fetch challenges:", err);
-        setError(err.message || "Failed to load challenges.");
-        toast.error(err.message || "Failed to load challenges.");
+        console.error("Failed to fetch dashboard data:", err);
+        setError(
+          err.message || "Failed to load challenges or completion status."
+        );
+        toast.error(
+          err.message || "Failed to load challenges or completion status."
+        );
       } finally {
         setLoading(false);
       }
     };
 
-    fetchChallenges();
-  }, []); // Empty dependency array means this runs once on mount
+    fetchDashboardData();
+  }, []);
 
   return (
     <ProtectedRoute>
@@ -67,9 +63,10 @@ export default function Dashboard() {
             </p>
           </div>
 
-          {/* 💡 NEW: Loading, Error, and No Challenges states */}
+          {/* Loading, Error, and No Challenges states */}
           {loading && (
-            <div className="text-center text-white py-8">
+            <div className="text-center text-white py-8 flex justify-center items-center">
+              <Loader2 className="animate-spin text-[#06ffa5] w-6 h-6 mr-2" />{" "}
               Loading challenges...
             </div>
           )}
@@ -85,18 +82,21 @@ export default function Dashboard() {
           )}
 
           {/* Challenges Grid */}
-          {!loading &&
-            !error &&
-            challenges.length > 0 && ( // 💡 NEW: Only render if not loading and no error
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {challenges.map((challenge) => (
-                  // 💡 MODIFIED: ChallengeCard now receives challenge data from state
-                  <ChallengeCard key={challenge.id} {...challenge} />
-                ))}
-              </div>
-            )}
+          {!loading && !error && challenges.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {challenges.map((challenge) => (
+                // 💡 MODIFIED: Pass `isCompleted` prop to ChallengeCard
+                <ChallengeCard
+                  key={challenge.id}
+                  {...challenge}
+                  // Check if the current challenge's `id` is in the `completedChallengeIds` array
+                  isCompleted={completedChallengeIds.includes(challenge.id)}
+                />
+              ))}
+            </div>
+          )}
 
-          {/* Coming Soon Section */}
+          {/* Coming Soon Section - (Remains unchanged) */}
           <div className="mt-12">
             <h2 className="text-2xl font-bold text-white mb-6 font-mono gradient-text">
               Coming Soon
