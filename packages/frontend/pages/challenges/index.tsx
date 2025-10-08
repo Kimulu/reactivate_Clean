@@ -3,18 +3,32 @@ import { Sidebar } from "@/components/Sidebar";
 import { ChallengeCard } from "@/components/common/ChallengeCard";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useEffect, useState } from "react";
-import { apiClient, Challenge } from "@/utils/apiClient"; // 💡 MODIFIED: Challenge type is now imported
+// 💡 MODIFIED: Challenge and CompletedChallengeInfo types are now imported
+import {
+  apiClient,
+  Challenge,
+  CompletedChallengeInfo,
+} from "@/utils/apiClient";
 import toast from "react-hot-toast";
-import { Loader2 } from "lucide-react"; // 💡 NEW: For loading spinner
+import { Loader2 } from "lucide-react"; // For loading spinner
+// 💡 NEW IMPORT: useSelector from Redux
+import { useSelector } from "react-redux";
+import { RootState } from "@/store"; // 💡 NEW IMPORT: RootState for Redux state
 
 export default function Dashboard() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // 💡 NEW STATE: To store IDs of challenges completed by the user
-  const [completedChallengeIds, setCompletedChallengeIds] = useState<string[]>(
-    []
+  // 💡 MODIFIED STATE: To store detailed info about completed challenges
+  const [completedChallengesInfo, setCompletedChallengesInfo] = useState<
+    CompletedChallengeInfo[]
+  >([]);
+
+  // 💡 NEW: Access user's total points from Redux
+  const userTotalPoints = useSelector(
+    (state: RootState) => state.user.totalPoints
   );
+  console.log("Dashboard - User Total Points from Redux:", userTotalPoints); // For debugging
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -22,14 +36,15 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
 
-        // Fetch all challenges
+        // Fetch all challenges (now includes 'points' from backend)
         const challengesData: Challenge[] = await apiClient.getChallenges();
         setChallenges(challengesData);
 
-        // 💡 NEW: Fetch user's completed challenges (requires authentication)
-        const completedIds: string[] = await apiClient.getCompletedChallenges();
-        setCompletedChallengeIds(completedIds);
-        console.log("Completed Challenge IDs:", completedIds);
+        // 💡 NEW: Fetch user's completed challenges (returns array of { challengeId, pointsEarned })
+        const completedInfo: CompletedChallengeInfo[] =
+          await apiClient.getCompletedChallenges();
+        setCompletedChallengesInfo(completedInfo);
+        console.log("Completed Challenge Info:", completedInfo);
       } catch (err: any) {
         console.error("Failed to fetch dashboard data:", err);
         setError(
@@ -44,7 +59,9 @@ export default function Dashboard() {
     };
 
     fetchDashboardData();
-  }, []);
+    // 💡 MODIFIED: Add userTotalPoints to dependencies to re-fetch completion status
+    // when user points change (e.g., after a submission). This ensures the tick appears.
+  }, [userTotalPoints]); // This will re-fetch data when userTotalPoints updates in Redux
 
   return (
     <ProtectedRoute>
@@ -85,12 +102,14 @@ export default function Dashboard() {
           {!loading && !error && challenges.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {challenges.map((challenge) => (
-                // 💡 MODIFIED: Pass `isCompleted` prop to ChallengeCard
                 <ChallengeCard
                   key={challenge.id}
                   {...challenge}
-                  // Check if the current challenge's `id` is in the `completedChallengeIds` array
-                  isCompleted={completedChallengeIds.includes(challenge.id)}
+                  // 💡 MODIFIED: Check if the current challenge's `id` is in the `completedChallengesInfo` array
+                  isCompleted={completedChallengesInfo.some(
+                    (info) => info.challengeId === challenge.id
+                  )}
+                  points={challenge.points} // 💡 NEW: Pass challenge points to ChallengeCard
                 />
               ))}
             </div>

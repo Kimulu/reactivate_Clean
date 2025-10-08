@@ -14,6 +14,9 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 // 💡 NEW: Import apiClient and Challenge interface
 import { apiClient, Challenge } from "@/utils/apiClient";
+// 💡 NEW IMPORT: useDispatch and updateUserTotalPoints for Redux
+import { useDispatch } from "react-redux";
+import { updateUserTotalPoints } from "@/store/userSlice";
 
 type SubmissionPhase =
   | "idle"
@@ -24,16 +27,15 @@ type SubmissionPhase =
   | "submission_success"
   | "submission_failed";
 
-// 💡 MODIFIED: TestRunner now accepts `challenge` as a prop
 interface TestRunnerProps {
   challenge: Challenge; // Pass the fetched challenge down
 }
 
 function TestRunner({ challenge }: TestRunnerProps) {
-  // 💡 MODIFIED: Accept challenge prop
-  const { dispatch, listen, sandpack } = useSandpack();
+  const { dispatch: sandpackDispatch, listen, sandpack } = useSandpack(); // 💡 MODIFIED: Renamed dispatch to sandpackDispatch
   const router = useRouter();
-  const { id: challengeId } = router.query; // This will still match challenge.id
+  const { id: challengeId } = router.query;
+  const dispatch = useDispatch(); // 💡 NEW: Initialize Redux useDispatch
 
   const [isRunning, setIsRunning] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -57,9 +59,9 @@ function TestRunner({ challenge }: TestRunnerProps) {
       console.log("Submission Phase: confirming_tests");
     }
 
-    dispatch({ type: "refresh" });
+    sandpackDispatch({ type: "refresh" }); // 💡 MODIFIED: Use sandpackDispatch
     setTimeout(() => {
-      dispatch({ type: "run-all-tests" });
+      sandpackDispatch({ type: "run-all-tests" }); // 💡 MODIFIED: Use sandpackDispatch
     }, 800);
   };
 
@@ -69,7 +71,6 @@ function TestRunner({ challenge }: TestRunnerProps) {
     initiateTestRun(true);
   };
 
-  // 💡 MODIFIED: Dirty check - now uses the `challenge` prop
   useEffect(() => {
     const unsubscribe = listen((msg) => {
       if (msg.type === "state" && msg.state.files) {
@@ -150,7 +151,6 @@ function TestRunner({ challenge }: TestRunnerProps) {
                   console.log("Submission Phase: submitting_code");
 
                   try {
-                    // --- 💡 MODIFIED: Actual API call for submission ---
                     const editedFilesContent: { [path: string]: string } = {};
 
                     if (
@@ -189,10 +189,19 @@ function TestRunner({ challenge }: TestRunnerProps) {
                       editedFilesContent
                     );
 
-                    // 💡 NEW: Call apiClient.submitChallenge
-                    await apiClient.submitChallenge(
+                    // 💡 MODIFIED: Call apiClient.submitChallenge and get response
+                    const submissionResponse = await apiClient.submitChallenge(
                       challengeId as string,
                       editedFilesContent
+                    );
+
+                    // 💡 NEW: Dispatch Redux action to update user's total points
+                    dispatch(
+                      updateUserTotalPoints(submissionResponse.userPoints)
+                    );
+                    console.log(
+                      "Redux: User total points updated to",
+                      submissionResponse.userPoints
                     );
 
                     setSubmissionPhase("submission_success");
@@ -205,9 +214,11 @@ function TestRunner({ challenge }: TestRunnerProps) {
                     }, 1000);
                   } catch (error: any) {
                     setSubmissionPhase("submission_failed");
-                    toast.error(error.message || "Failed to submit challenge.");
+                    toast.error(
+                      error.message || "Failed to process submission."
+                    );
                     console.error("Submission Phase: submission_failed", error);
-                    setIsSubmitModalOpen(false); // Close modal on failure
+                    setIsSubmitModalOpen(false);
                   }
                 }, 800);
               } else {
@@ -235,7 +246,15 @@ function TestRunner({ challenge }: TestRunnerProps) {
     });
 
     return () => unsubscribe();
-  }, [listen, submissionPhase, sandpack.files, challenge, router, challengeId]); // 💡 MODIFIED: Added challengeId to dependencies for useEffect
+  }, [
+    listen,
+    submissionPhase,
+    sandpack.files,
+    challenge,
+    router,
+    challengeId,
+    dispatch,
+  ]); // 💡 MODIFIED: Added dispatch to dependencies
 
   return (
     <div className="flex flex-col h-full">

@@ -1,12 +1,15 @@
 // controllers/challengeController.js
+
 const Challenge = require("../models/Challenge");
-const UserChallengeSubmission = require("../models/UserChallengeSubmission"); // 💡 NEW: Import submission model
+const UserChallengeSubmission = require("../models/UserChallengeSubmission");
+const User = require("../models/User"); // 💡 NEW: Import User model to update totalPoints
 
 // @route GET /api/challenges
 // @desc Get all challenges
 // @access Public
 exports.getChallenges = async (req, res) => {
   try {
+    // 💡 MODIFIED: .find({}) will now automatically include the 'points' field
     const challenges = await Challenge.find({});
     const formattedChallenges = challenges.map((challenge) =>
       challenge.toObject()
@@ -18,19 +21,18 @@ exports.getChallenges = async (req, res) => {
   }
 };
 
-// 💡 NEW: @route GET /api/challenges/:id
+// @route GET /api/challenges/:id
 // @desc Get a single challenge by its custom 'id' field
 // @access Public
 exports.getChallengeById = async (req, res) => {
   try {
-    // Find by the custom 'id' field, not MongoDB's '_id'
+    // 💡 MODIFIED: .findOne({}) will now automatically include the 'points' field
     const challenge = await Challenge.findOne({ id: req.params.id });
 
     if (!challenge) {
       return res.status(404).json({ message: "Challenge not found" });
     }
 
-    // Convert to plain object and send
     res.status(200).json(challenge.toObject());
   } catch (err) {
     console.error(`Error fetching challenge ${req.params.id}:`, err.message);
@@ -38,7 +40,7 @@ exports.getChallengeById = async (req, res) => {
   }
 };
 
-// 💡 NEW: @route POST /api/challenges/:challengeId/submit
+// @route POST /api/challenges/:challengeId/submit
 // @desc Submit code for a challenge
 // @access Private (requires auth)
 exports.submitChallenge = async (req, res) => {
@@ -51,31 +53,65 @@ exports.submitChallenge = async (req, res) => {
   }
 
   try {
-    // 1. Find the challenge by its custom ID to get its MongoDB _id
+    // 1. Find the challenge by its custom ID to get its MongoDB _id AND points
     const challenge = await Challenge.findOne({ id: challengeId });
     if (!challenge) {
       return res.status(404).json({ message: "Challenge not found" });
     }
 
+    // Determine points to award. This challenge's points will be used.
+    const pointsToAward = challenge.points;
+    let oldPointsEarned = 0; // To track if points were previously earned for this challenge
+
     // 2. Create or Update the UserChallengeSubmission
+    // We need to check if a submission already exists to correctly update totalPoints
+    const existingSubmission = await UserChallengeSubmission.findOne({
+      user: userId,
+      challenge: challenge._id,
+    });
+
     const submission = await UserChallengeSubmission.findOneAndUpdate(
-      { user: userId, challenge: challenge._id }, // Find by user and challenge _id
+      { user: userId, challenge: challenge._id },
       {
         submittedCode: submittedCode,
-        completed: true, // Mark as completed (since frontend already passed tests)
+        completed: true,
         submittedAt: Date.now(),
-        challengeId: challenge.id, // Store frontend-friendly challenge ID
+        challengeId: challenge.id,
+        pointsEarned: pointsToAward, // 💡 NEW: Set pointsEarned
       },
       {
-        new: true, // Return the updated document
-        upsert: true, // Create a new document if it doesn't exist
-        setDefaultsOnInsert: true, // Apply defaults if a new doc is inserted
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
       }
     );
+
+    // 💡 NEW: Update user's total points only if this is a new submission or points changed
+    if (existingSubmission && !existingSubmission.completed) {
+      // If previous submission existed but wasn't completed, award points
+      await User.findByIdAndUpdate(userId, {
+        $inc: { totalPoints: pointsToAward },
+      });
+      console.log(
+        `User ${userId} earned ${pointsToAward} for completing ${challengeId}.`
+      );
+    } else if (!existingSubmission) {
+      // If no existing submission, it's a new completion, award points
+      await User.findByIdAndUpdate(userId, {
+        $inc: { totalPoints: pointsToAward },
+      });
+      console.log(
+        `User ${userId} earned ${pointsToAward} for new completion of ${challengeId}.`
+      );
+    }
+    // If it was already completed and points are the same, no change to totalPoints.
+    // If you want to award points for re-submission even if already completed, modify logic here.
 
     res.status(200).json({
       message: "Challenge submitted and marked as completed successfully!",
       submission,
+      userPoints: (await User.findById(userId).select("totalPoints"))
+        ?.totalPoints, // 💡 NEW: Return updated totalPoints
     });
   } catch (err) {
     console.error("Error submitting challenge:", err.message);
@@ -85,24 +121,25 @@ exports.submitChallenge = async (req, res) => {
   }
 };
 
-// 💡 NEW: @route GET /api/challenges/completed
+// @route GET /api/challenges/completed
 // @desc Get all challenges completed by the logged-in user
 // @access Private (requires auth)
 exports.getCompletedChallenges = async (req, res) => {
-  const userId = req.user._id; // User ID from auth middleware
+  const userId = req.user._id;
 
   try {
     const completedSubmissions = await UserChallengeSubmission.find({
       user: userId,
       completed: true,
-    }).select("challengeId -_id"); // Only return the challengeId and hide _id
+    }).select("challengeId pointsEarned -_id"); // 💡 MODIFIED: Select pointsEarned as well
 
-    // Extract just the challengeId strings
-    const completedChallengeIds = completedSubmissions.map(
-      (sub) => sub.challengeId
-    );
+    // Extract challengeId strings and points
+    const completedChallengesInfo = completedSubmissions.map((sub) => ({
+      challengeId: sub.challengeId,
+      pointsEarned: sub.pointsEarned,
+    }));
 
-    res.status(200).json(completedChallengeIds);
+    res.status(200).json(completedChallengesInfo); // 💡 MODIFIED: Return object with points
   } catch (err) {
     console.error("Error fetching completed challenges:", err.message);
     res

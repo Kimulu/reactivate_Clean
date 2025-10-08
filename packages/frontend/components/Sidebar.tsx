@@ -6,28 +6,25 @@ import {
   User as UserIcon,
   LogOut,
 } from "lucide-react";
-import { useSelector, useDispatch } from "react-redux"; // Import useDispatch
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/router"; // Import useRouter
-import { clearUser } from "../store/userSlice"; // 💡 Import clearUser action instead of logout
+import { useRouter } from "next/router";
+import { clearUser } from "../store/userSlice";
 
 export function Sidebar() {
   const user = useSelector((state: RootState) => state.user);
   const dispatch = useDispatch();
   const router = useRouter();
 
-  // State to track if the component has mounted on the client side
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  // Use the stored user ID if mounted, otherwise assume null for SSR consistency.
-  // This helps prevent hydration errors if the profile link changes based on user ID.
   const userIdForLink = hasMounted ? user?.id : null;
-  const profileHref = userIdForLink ? `/profile/${userIdForLink}` : "/Login"; // Changed to /Login for consistency
+  const profileHref = userIdForLink ? `/profile/${userIdForLink}` : "/Login";
 
   const navItems = [
     { icon: Code, label: "Challenges", href: "/challenges" },
@@ -43,10 +40,9 @@ export function Sidebar() {
   const staticLinkClasses =
     "flex items-center space-x-3 px-4 py-3 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-all duration-200";
 
-  // 💡 Function to handle logout using clearUser
   const handleLogout = () => {
-    dispatch(clearUser()); // Dispatch the clearUser action
-    router.replace("/Login"); // Redirect to the login page after logout
+    dispatch(clearUser());
+    router.replace("/Login");
   };
 
   return (
@@ -70,14 +66,10 @@ export function Sidebar() {
           {navItems.map((item, index) => {
             const Icon = item.icon;
 
-            // Conditional rendering for the Profile link to maintain SSR consistency
             if (!hasMounted && item.label === "Profile") {
-              // During SSR/initial hydration, render the link with the server's expected default path (/Login)
               return (
                 <li key={index}>
                   <a href="/Login" className={staticLinkClasses}>
-                    {" "}
-                    {/* Changed to /Login */}
                     <Icon size={20} />
                     <span className="font-medium">{item.label}</span>
                   </a>
@@ -94,19 +86,30 @@ export function Sidebar() {
               </li>
             );
           })}
-          {/* 💡 Logout Button - now using clearUser */}
-          {hasMounted &&
-            user?.id && ( // Only show logout if mounted and user is logged in
-              <li>
-                <button
-                  onClick={handleLogout}
-                  className={`${staticLinkClasses} w-full text-left focus:outline-none`}
-                >
-                  <LogOut size={20} />
-                  <span className="font-medium">Logout</span>
-                </button>
-              </li>
-            )}
+          {/* 💡 NEW: Display User's Total Points */}
+          {hasMounted && user?.id && (
+            <li className="pt-4 border-t border-white/10 mt-4">
+              <div className="flex items-center space-x-3 px-4 py-3 text-white/80">
+                <Trophy size={20} className="text-yellow-400" />
+                <span className="font-medium">Points:</span>
+                <span className="font-bold text-yellow-300">
+                  {user.totalPoints}
+                </span>
+              </div>
+            </li>
+          )}
+          {/* Logout Button */}
+          {hasMounted && user?.id && (
+            <li>
+              <button
+                onClick={handleLogout}
+                className={`${staticLinkClasses} w-full text-left focus:outline-none`}
+              >
+                <LogOut size={20} />
+                <span className="font-medium">Logout</span>
+              </button>
+            </li>
+          )}
         </ul>
       </nav>
     </div>

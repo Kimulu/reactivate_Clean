@@ -1,33 +1,45 @@
-// models/User.js - Defines the Mongoose schema for a User
+// models/User.js
 
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
+const UserSchema = new mongoose.Schema(
+  {
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: true,
+      select: false,
+    },
+    // 💡 NEW FIELD: Store the user's total accumulated points
+    totalPoints: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
-  // 💡 FIX: Added email field with required: true and lowercase
-  email: {
-    type: String,
-    required: true, // 💡 Now required as per frontend
-    unique: true,
-    trim: true,
-    lowercase: true, // 💡 Good practice for emails
-  },
-  password: {
-    type: String,
-    required: true,
-    select: false, // 💡 FIX: Prevents password from being returned in queries by default
-  },
-});
+  {
+    timestamps: true,
+  }
+);
 
-// Middleware to hash the password before saving the user
-userSchema.pre("save", async function (next) {
-  // Only hash the password if it has been modified (or is new)
+UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
     return next();
   }
@@ -36,14 +48,8 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// Method to compare the provided password with the hashed password
-// This method is used by login route to verify password.
-userSchema.methods.comparePassword = async function (candidatePassword) {
-  // 'this.password' here will contain the hashed password due to 'select: false'
-  // it needs to be explicitly selected in the query for it to be available.
+UserSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-const User = mongoose.model("User", userSchema);
-
-module.exports = User;
+module.exports = mongoose.model("User", UserSchema);

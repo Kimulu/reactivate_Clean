@@ -1,11 +1,14 @@
 // store/userSlice.ts
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+// 💡 NEW: Import UserInfo interface from apiClient for type safety
+import { UserInfo } from "@/utils/apiClient";
 
 interface UserState {
   id: string | null;
   username: string | null;
   email: string | null;
   token: string | null;
+  totalPoints: number; // 💡 NEW FIELD: User's total points
 }
 
 const initialState: UserState = {
@@ -13,21 +16,18 @@ const initialState: UserState = {
   username: null,
   email: null,
   token: null,
+  totalPoints: 0, // 💡 NEW: Initialize totalPoints to 0
 };
 
 const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
-    setUser: (
-      state,
-      action: PayloadAction<{
-        id: string;
-        username: string;
-        email: string;
-        token: string;
-      }>
-    ) => {
+    // 💡 CRITICAL FIX: The payload now matches what your `Login.tsx` and `AuthLoader.tsx`
+    // (based on your provided code) currently pass.
+    // It is a direct combination of user details and token.
+    setUser: (state, action: PayloadAction<UserInfo & { token: string }>) => {
+      // 💡 MODIFIED: Payload type
       console.log(
         "LOG: Redux Reducer setUser fired with payload:",
         action.payload
@@ -36,22 +36,36 @@ const userSlice = createSlice({
       state.username = action.payload.username;
       state.email = action.payload.email;
       state.token = action.payload.token;
+      state.totalPoints = action.payload.totalPoints; // 💡 NEW: Set totalPoints
 
-      // 💡 FIX 1: Persist token to localStorage
       if (typeof window !== "undefined") {
-        // Defensive check for SSR
         localStorage.setItem("token", action.payload.token);
-        // 💡 FIX 2: Also persist relevant user info to localStorage
-        localStorage.setItem(
-          "userInfo",
-          JSON.stringify({
-            id: action.payload.id,
-            username: action.payload.username,
-            email: action.payload.email,
-          })
-        );
+        // 💡 MODIFIED: Store relevant user info (excluding token) for re-hydration.
+        // AuthLoader will combine token + userInfo for setUser.
+        const { token, ...userInfoToStore } = action.payload; // Destructure token out
+        localStorage.setItem("userInfo", JSON.stringify(userInfoToStore));
         console.log("LOG: Token and UserInfo stored in localStorage.");
       }
+    },
+    // 💡 NEW: Action to update only the totalPoints field in Redux
+    updateUserTotalPoints: (state, action: PayloadAction<number>) => {
+      state.totalPoints = action.payload;
+      // Also update localStorage userInfo for persistence
+      if (
+        typeof window !== "undefined" &&
+        state.id &&
+        state.username &&
+        state.email
+      ) {
+        const currentUserInfo: UserInfo = {
+          id: state.id,
+          username: state.username,
+          email: state.email,
+          totalPoints: action.payload, // Update points
+        };
+        localStorage.setItem("userInfo", JSON.stringify(currentUserInfo));
+      }
+      console.log(`LOG: User totalPoints updated to ${action.payload}`);
     },
     clearUser: (state) => {
       console.log("LOG: Redux Reducer clearUser (logout) fired.");
@@ -59,16 +73,17 @@ const userSlice = createSlice({
       state.username = null;
       state.email = null;
       state.token = null;
+      state.totalPoints = 0; // 💡 NEW: Reset totalPoints on logout
 
-      // 💡 FIX 3: Clear both token and userInfo from localStorage during logout
       if (typeof window !== "undefined") {
         localStorage.removeItem("token");
-        localStorage.removeItem("userInfo"); // Clear user info as well
+        localStorage.removeItem("userInfo");
         console.log("LOG: Token and UserInfo removed from localStorage.");
       }
     },
   },
 });
 
-export const { setUser, clearUser } = userSlice.actions;
+// 💡 MODIFIED: Export new action
+export const { setUser, updateUserTotalPoints, clearUser } = userSlice.actions;
 export default userSlice.reducer;

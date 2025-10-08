@@ -2,7 +2,6 @@
 
 const mongoose = require("mongoose");
 
-// Define a schema for individual files within a challenge
 const FileSchema = new mongoose.Schema({
   code: {
     type: String,
@@ -18,11 +17,9 @@ const FileSchema = new mongoose.Schema({
   },
 });
 
-// Main Challenge Schema
 const ChallengeSchema = new mongoose.Schema(
   {
     id: {
-      // This will be the unique ID used by your frontend (e.g., "fragments", "counter")
       type: String,
       required: true,
       unique: true,
@@ -41,14 +38,16 @@ const ChallengeSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    // 💡 FIX: Change 'files' type from Map to a plain Object
-    // Mongoose will store this as a subdocument (embedded document)
     files: {
-      type: mongoose.Schema.Types.Mixed, // Use Mixed for flexible object keys/values
+      type: mongoose.Schema.Types.Mixed,
       required: true,
-      // You can also define it as a plain object like:
-      // type: Object,
-      // default: {}, // A default empty object is good practice
+    },
+    // 💡 NEW FIELD: Points for completing this challenge
+    points: {
+      type: Number,
+      required: true,
+      default: 10, // Default to 10 points if not specified
+      min: 0,
     },
     createdAt: {
       type: Date,

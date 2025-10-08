@@ -1,30 +1,51 @@
 // utils/apiClient.ts
 
-// 💡 NEW: Define Challenge types (if not already defined in a global types file)
 interface ChallengeFile {
   code: string;
   active?: boolean;
   hidden?: boolean;
 }
+
 export interface Challenge {
-  // Export this interface to use in frontend components
-  _id: string; // MongoDB's ID
-  id: string; // Your custom challenge ID (e.g., "fragments")
+  _id: string;
+  id: string;
   title: string;
   difficulty: string;
   instructions: string;
   files: { [key: string]: ChallengeFile };
+  points: number; // 💡 NEW FIELD: Challenges now have a 'points' field
   createdAt?: string;
   updatedAt?: string;
   __v?: number;
 }
 
+// 💡 NEW INTERFACE: To explicitly define the user info structure from backend auth (including totalPoints)
+export interface UserInfo {
+  id: string;
+  username: string;
+  email: string;
+  totalPoints: number; // 💡 NEW FIELD: User's total points
+}
+
+// 💡 NEW INTERFACE: For the data returned by getCompletedChallenges
+export interface CompletedChallengeInfo {
+  challengeId: string;
+  pointsEarned: number; // 💡 NEW FIELD: Points earned for this specific challenge
+}
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL as string;
 
-// Helper function to get token from localStorage
-const getToken = () => localStorage.getItem("token");
+const getToken = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const token = localStorage.getItem("token");
+  if (!token || token === "null" || token.trim() === "") {
+    return null;
+  }
+  return token;
+};
 
-// 💡 NEW: Helper function for authenticated fetches
 const authFetch = async (url: string, options: RequestInit = {}) => {
   const token = getToken();
   if (!token) {
@@ -33,7 +54,7 @@ const authFetch = async (url: string, options: RequestInit = {}) => {
 
   const headers = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`, // Add Authorization header
+    Authorization: `Bearer ${token}`,
     ...options.headers,
   } as HeadersInit;
 
@@ -49,7 +70,6 @@ const authFetch = async (url: string, options: RequestInit = {}) => {
     } catch (e) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
-    // Return specific backend message if available
     throw new Error(errorData?.message || `Failed API call: ${url}`);
   }
 
@@ -57,13 +77,16 @@ const authFetch = async (url: string, options: RequestInit = {}) => {
 };
 
 export const apiClient = {
-  loginUser: async (username: string, password: string) => {
+  // 💡 MODIFIED: loginUser return type includes UserInfo
+  loginUser: async (
+    username: string,
+    password: string
+  ): Promise<{ token: string; user: UserInfo }> => {
     const res = await fetch(`${BASE_URL}/api/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
-
     if (!res.ok) {
       const errorData = await res.json().catch(() => null);
       throw new Error(errorData?.message || "Login failed");
@@ -71,13 +94,17 @@ export const apiClient = {
     return res.json();
   },
 
-  signupUser: async (username: string, email: string, password: string) => {
+  // 💡 MODIFIED: signupUser return type includes UserInfo
+  signupUser: async (
+    username: string,
+    email: string,
+    password: string
+  ): Promise<{ token: string; user: UserInfo }> => {
     const res = await fetch(`${BASE_URL}/api/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, email, password }),
     });
-
     if (!res.ok) {
       const errorData = await res.json().catch(() => null);
       throw new Error(errorData?.message || "Failed to signup");
@@ -85,21 +112,19 @@ export const apiClient = {
     return res.json();
   },
 
-  // 💡 MODIFIED: Now uses authFetch for consistency and to ensure token is sent
-  getUserById: async (id: string) => {
+  // 💡 MODIFIED: getUserById return type is UserInfo
+  getUserById: async (id: string): Promise<UserInfo> => {
     const res = await authFetch(`/api/users/${id}`);
     return res.json();
   },
 
   getChallenges: async (): Promise<Challenge[]> => {
-    // This endpoint is public, so no authFetch needed directly
     const res = await fetch(`${BASE_URL}/api/challenges`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
-
     if (!res.ok) {
       const errorData = await res.json().catch(() => null);
       throw new Error(errorData?.message || "Failed to fetch challenges");
@@ -108,14 +133,12 @@ export const apiClient = {
   },
 
   getChallengeById: async (challengeId: string): Promise<Challenge> => {
-    // This endpoint is public
     const res = await fetch(`${BASE_URL}/api/challenges/${challengeId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
-
     if (!res.ok) {
       const errorData = await res.json().catch(() => null);
       throw new Error(
@@ -126,21 +149,20 @@ export const apiClient = {
     return res.json();
   },
 
-  // 💡 NEW: Method to submit a challenge solution
+  // 💡 MODIFIED: submitChallenge returns message, submission, and updated userPoints
   submitChallenge: async (
     challengeId: string,
     submittedCode: { [path: string]: string }
-  ) => {
+  ): Promise<{ message: string; submission: any; userPoints: number }> => {
     const res = await authFetch(`/api/challenges/${challengeId}/submit`, {
       method: "POST",
-      body: JSON.stringify({ submittedCode }), // Backend expects { submittedCode: { '/App.js': '...' } }
+      body: JSON.stringify({ submittedCode }),
     });
     return res.json();
   },
 
-  // 💡 NEW: Method to get a list of completed challenge IDs for the current user
-  getCompletedChallenges: async (): Promise<string[]> => {
-    // Returns an array of challenge IDs (e.g., ["fragments", "counter"])
+  // 💡 MODIFIED: getCompletedChallenges now returns an array of CompletedChallengeInfo
+  getCompletedChallenges: async (): Promise<CompletedChallengeInfo[]> => {
     const res = await authFetch(`/api/challenges/completed`, {
       method: "GET",
     });

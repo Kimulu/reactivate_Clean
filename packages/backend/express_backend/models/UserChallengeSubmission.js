@@ -6,40 +6,43 @@ const UserChallengeSubmissionSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // References the User model
+      ref: "User",
       required: true,
     },
     challenge: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Challenge", // References the Challenge model
+      ref: "Challenge",
       required: true,
     },
-    // We'll store the challenge's custom 'id' (e.g., "fragments") for easier querying on frontend
     challengeId: {
       type: String,
       required: true,
     },
-    // Store the user's submitted code for this challenge
     submittedCode: {
-      type: mongoose.Schema.Types.Mixed, // Use Mixed for flexible file structure
+      type: mongoose.Schema.Types.Mixed,
       required: true,
     },
     completed: {
       type: Boolean,
-      default: false, // Initially false, set to true upon successful submission
+      default: false,
     },
     submittedAt: {
       type: Date,
       default: Date.now,
     },
-    // You might add fields for score, attempts, etc., later.
+    // 💡 NEW FIELD: Store the points earned for this specific submission
+    pointsEarned: {
+      type: Number,
+      required: true,
+      default: 0, // Default to 0, will be updated upon submission
+      min: 0,
+    },
   },
   {
-    timestamps: true, // Adds createdAt and updatedAt
+    timestamps: true,
   }
 );
 
-// Ensure a user can only have one submission per challenge
 UserChallengeSubmissionSchema.index(
   { user: 1, challenge: 1 },
   { unique: true }
