@@ -3,31 +3,30 @@ import { Sidebar } from "@/components/Sidebar";
 import { ChallengeCard } from "@/components/common/ChallengeCard";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useEffect, useState } from "react";
-// 💡 MODIFIED: Challenge and CompletedChallengeInfo types are now imported
 import {
   apiClient,
   Challenge,
   CompletedChallengeInfo,
 } from "@/utils/apiClient";
 import toast from "react-hot-toast";
-import { Loader2 } from "lucide-react"; // For loading spinner
-// 💡 NEW IMPORT: useSelector from Redux
+import { Loader2 } from "lucide-react";
 import { useSelector } from "react-redux";
-import { RootState } from "@/store"; // 💡 NEW IMPORT: RootState for Redux state
+import { RootState } from "@/store";
 
 export default function Dashboard() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // 💡 MODIFIED STATE: To store detailed info about completed challenges
   const [completedChallengesInfo, setCompletedChallengesInfo] = useState<
     CompletedChallengeInfo[]
   >([]);
 
-  // 💡 NEW: Access user's total points from Redux
-  const userTotalPoints = useSelector(
-    (state: RootState) => state.user.totalPoints
-  );
+  // 💡 NEW: Access the full user object from Redux for authentication status
+  const user = useSelector((state: RootState) => state.user);
+  // We still use user.totalPoints from Redux as a dependency for re-fetching
+  const userTotalPoints = user.totalPoints;
+  const isLoggedIn = !!user.id; // 💡 NEW: A clear flag for login status
+
   console.log("Dashboard - User Total Points from Redux:", userTotalPoints); // For debugging
 
   useEffect(() => {
@@ -36,32 +35,47 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
 
-        // Fetch all challenges (now includes 'points' from backend)
+        // Fetch all challenges (public)
         const challengesData: Challenge[] = await apiClient.getChallenges();
         setChallenges(challengesData);
 
-        // 💡 NEW: Fetch user's completed challenges (returns array of { challengeId, pointsEarned })
-        const completedInfo: CompletedChallengeInfo[] =
-          await apiClient.getCompletedChallenges();
-        setCompletedChallengesInfo(completedInfo);
-        console.log("Completed Challenge Info:", completedInfo);
+        // 💡 CRITICAL FIX: Only fetch completed challenges if the user is logged in
+        if (isLoggedIn) {
+          const completedInfo: CompletedChallengeInfo[] =
+            await apiClient.getCompletedChallenges();
+          setCompletedChallengesInfo(completedInfo);
+          console.log("Completed Challenge Info:", completedInfo);
+        } else {
+          // If not logged in, ensure completed challenges state is empty
+          setCompletedChallengesInfo([]);
+          console.log(
+            "Not logged in, skipping fetch for completed challenges."
+          );
+        }
       } catch (err: any) {
         console.error("Failed to fetch dashboard data:", err);
-        setError(
-          err.message || "Failed to load challenges or completion status."
-        );
-        toast.error(
-          err.message || "Failed to load challenges or completion status."
-        );
+        // Only show error if we were actually trying to fetch protected data while logged in
+        if (isLoggedIn) {
+          setError(
+            err.message || "Failed to load challenges or completion status."
+          );
+          toast.error(
+            err.message || "Failed to load challenges or completion status."
+          );
+        } else {
+          // If not logged in, and error occurs for public challenges, still show
+          setError(err.message || "Failed to load challenges.");
+          toast.error(err.message || "Failed to load challenges.");
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
-    // 💡 MODIFIED: Add userTotalPoints to dependencies to re-fetch completion status
-    // when user points change (e.g., after a submission). This ensures the tick appears.
-  }, [userTotalPoints]); // This will re-fetch data when userTotalPoints updates in Redux
+    // 💡 MODIFIED: Depend on `isLoggedIn` to re-run when auth status changes
+    // `userTotalPoints` is still a good dependency for re-fetching points-related data
+  }, [isLoggedIn, userTotalPoints]);
 
   return (
     <ProtectedRoute>
@@ -105,11 +119,10 @@ export default function Dashboard() {
                 <ChallengeCard
                   key={challenge.id}
                   {...challenge}
-                  // 💡 MODIFIED: Check if the current challenge's `id` is in the `completedChallengesInfo` array
                   isCompleted={completedChallengesInfo.some(
                     (info) => info.challengeId === challenge.id
                   )}
-                  points={challenge.points} // 💡 NEW: Pass challenge points to ChallengeCard
+                  points={challenge.points}
                 />
               ))}
             </div>
