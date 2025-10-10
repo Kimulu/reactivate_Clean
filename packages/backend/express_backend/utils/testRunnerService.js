@@ -182,7 +182,7 @@ exports.runTests = async (
     );
     await fs.writeFile(testFilePath, adjustedTestContent);
 
-    // Run Jest with color disabled
+    // Run Jest
     const jestConfig = path.join(tempDir, "jest.config.js");
     const jestCommand = [
       "npx jest",
@@ -210,11 +210,24 @@ exports.runTests = async (
       );
     });
 
-    // Parse results
+    // --- FIX 1: Delay and retry reading jest-results.json ---
     const jestResultsPath = path.join(tempDir, "jest-results.json");
-    const rawJson = await fs.readFile(jestResultsPath, "utf8").catch(() => "");
-    const cleanedStdout = stripAnsi(stdout || ""); // 🧹 remove any ANSI junk
-    const parsed = await parseJestOutput(rawJson, colorize);
+    let rawJson = "";
+    try {
+      await new Promise((r) => setTimeout(r, 300)); // Wait a bit for Jest to finish writing
+      rawJson = await fs.readFile(jestResultsPath, "utf8");
+    } catch (e1) {
+      console.warn("Jest results not ready, retrying...");
+      await new Promise((r) => setTimeout(r, 300));
+      try {
+        rawJson = await fs.readFile(jestResultsPath, "utf8");
+      } catch (e2) {
+        console.error("Failed to read Jest results after retry:", e2.message);
+      }
+    }
+
+    const cleanedStdout = stripAnsi(stdout || ""); // 🧹 remove ANSI junk
+    const parsed = await parseJestOutput(rawJson || "{}", colorize);
 
     // Always clean parsed output too
     testResults.output = stripAnsi(parsed.output + "\n" + cleanedStdout.trim());
@@ -234,10 +247,12 @@ exports.runTests = async (
       ],
     };
   } finally {
+    // --- FIX 2: Delay before cleanup to avoid EBUSY ---
     try {
+      await new Promise((r) => setTimeout(r, 500));
       await fs.rm(tempDir, { recursive: true, force: true });
     } catch (cleanupError) {
-      console.error("Cleanup failed:", cleanupError);
+      console.warn("Cleanup failed (locked resource):", cleanupError.message);
     }
   }
 
