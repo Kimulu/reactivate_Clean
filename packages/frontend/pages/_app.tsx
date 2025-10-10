@@ -6,8 +6,7 @@ import { AuthLoader } from "@/components/AuthLoader";
 import { store } from "../store";
 import "../styles/globals.css";
 import { EsbuildProvider } from "@/context/EsbuildContext";
-
-const Toaster = dynamic(
+const DynamicToaster = dynamic(
   () => import("react-hot-toast").then((mod) => mod.Toaster),
   { ssr: false }
 );
@@ -17,8 +16,9 @@ function MyApp({ Component, pageProps }: AppProps) {
     <Provider store={store}>
       <EsbuildProvider>
         <AuthLoader>
+          {/* 💡 REMOVED: GlobalSandpackWrapper */}
           <Component {...pageProps} />
-          <Toaster />
+          <DynamicToaster />
         </AuthLoader>
       </EsbuildProvider>
     </Provider>

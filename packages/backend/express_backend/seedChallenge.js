@@ -3,7 +3,7 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const Challenge = require("./models/Challenge"); // Adjust path to your Challenge model
-const { challenges: challenges } = require("./models/challenges.ts"); // Adjust path to your local challenges.ts/js file
+const { challenges: challenges } = require("./models/seedChallenges.ts"); // Adjust path to your local challenges.ts/js file
 
 dotenv.config(); // Load environment variables
 

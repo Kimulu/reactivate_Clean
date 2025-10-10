@@ -23,7 +23,7 @@ const CustomAceEditor = () => {
       mode={mode}
       theme="dracula"
       value={code}
-      onChange={updateCode}
+      onChange={updateCode} // 💡 REVERTED: Direct call to updateCode
       name="custom-ace-editor"
       fontSize={14}
       width="100%"

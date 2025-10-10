@@ -2,6 +2,9 @@
 
 const mongoose = require("mongoose");
 
+// FileSchema is likely not directly used here but within the 'files' Mixed type.
+// If you want to strictly validate the structure of files within the 'files' object,
+// you might integrate this differently, but for now, 'Mixed' handles it.
 const FileSchema = new mongoose.Schema({
   code: {
     type: String,
@@ -39,8 +42,13 @@ const ChallengeSchema = new mongoose.Schema(
       required: true,
     },
     files: {
-      type: mongoose.Schema.Types.Mixed,
+      type: mongoose.Schema.Types.Mixed, // Stores an object like { 'index.js': { code: '...', active: true }, 'utils.js': { code: '...' } }
       required: true,
+    },
+    // 💡 NEW FIELD: This will store the Jest test code for the challenge
+    testCode: {
+      type: String,
+      required: true, // It's crucial for every challenge to have test code
     },
     // 💡 NEW FIELD: Points for completing this challenge
     points: {
@@ -55,7 +63,7 @@ const ChallengeSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true,
+    timestamps: true, // Automatically adds createdAt and updatedAt fields
   }
 );
 

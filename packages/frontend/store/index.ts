@@ -1,10 +1,12 @@
 // store/index.ts
 import { configureStore } from "@reduxjs/toolkit";
 import userReducer, { setUser } from "./userSlice";
+import sandpackReducer from "./sandpackSlice"; // 💡 NEW: Import sandpackReducer
 
 export const store = configureStore({
   reducer: {
     user: userReducer,
+    sandpack: sandpackReducer, // 💡 NEW: Add sandpackReducer
   },
 });
 

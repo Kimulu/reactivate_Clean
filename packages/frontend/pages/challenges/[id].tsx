@@ -1,22 +1,98 @@
 import { useRouter } from "next/router";
-// 💡 REMOVED: import { challenges } from "@/data/challenges"; // No longer needed
 import {
   SandpackProvider,
-  SandpackPreview,
-  SandpackTests,
   SandpackLayout,
-  useSandpack,
+  SandpackPreview,
+  useSandpack, // We still need useSandpack to get the current files from the editor
 } from "@codesandbox/sandpack-react";
-import CustomAceEditor from "@/components/CustomAceEditor";
-import FileTabs from "@/components/FileTabs";
-import { useEffect, useState } from "react";
+import CustomAceEditor from "@/components/CustomAceEditor"; // Your existing Ace Editor
+import FileTabs from "@/components/FileTabs"; // Your existing FileTabs
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
-// 💡 NEW: Import apiClient and Challenge interface
-import { apiClient, Challenge } from "@/utils/apiClient";
-// 💡 NEW IMPORT: useDispatch and updateUserTotalPoints for Redux
+// 💡 MODIFIED: Import apiClient and Challenge, and the new TestResult/CustomTestRunResponse interfaces
+import {
+  apiClient,
+  Challenge,
+  TestResult,
+  CustomTestRunResponse,
+} from "@/utils/apiClient";
 import { useDispatch } from "react-redux";
 import { updateUserTotalPoints } from "@/store/userSlice";
+
+// --- START CustomTestDisplay Component ---
+// This is your custom display for test results, replacing SandpackTests
+function CustomTestDisplay({
+  testResults,
+  testOutput,
+  loading,
+}: {
+  testResults: TestResult[];
+  testOutput: string;
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full bg-[#0f172a] text-gray-400">
+        <Loader2 className="animate-spin mr-2 text-[#06ffa5]" size={20} />{" "}
+        Running tests...
+      </div>
+    );
+  }
+
+  if (!testResults.length && !testOutput) {
+    return (
+      <div className="flex items-center justify-center h-full bg-[#0f172a] text-gray-400">
+        Run tests to see results.
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 bg-[#0f172a] text-gray-200 font-mono text-sm overflow-auto h-full">
+      {testOutput && (
+        <pre className="whitespace-pre-wrap mb-4 bg-gray-900 p-2 rounded">
+          {testOutput}
+        </pre>
+      )}
+      {testResults.length > 0 && (
+        <div className="space-y-2">
+          {testResults.map((result, index) => (
+            <div
+              key={index}
+              className={`flex flex-col gap-1 p-2 rounded ${
+                result.status === "passed"
+                  ? "bg-green-900/30 text-green-300"
+                  : result.status === "failed"
+                  ? "bg-red-900/30 text-red-300"
+                  : "bg-gray-800/30 text-gray-400"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {result.status === "passed" && (
+                  <CheckCircle className="text-green-400" size={16} />
+                )}
+                {result.status === "failed" && (
+                  <XCircle className="text-red-400" size={16} />
+                )}
+                {result.status === "skipped" && (
+                  <Loader2 className="text-gray-400" size={16} />
+                )}
+                <span className="font-semibold">{result.title}</span>
+              </div>
+              {result.message && result.status === "failed" && (
+                <pre className="text-red-300 text-xs mt-1 bg-red-900/20 p-1 rounded whitespace-pre-wrap break-all">
+                  {result.message}
+                </pre>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+// --- END CustomTestDisplay Component ---
 
 type SubmissionPhase =
   | "idle"
@@ -28,262 +104,164 @@ type SubmissionPhase =
   | "submission_failed";
 
 interface TestRunnerProps {
-  challenge: Challenge; // Pass the fetched challenge down
+  challenge: Challenge;
 }
 
-function TestRunner({ challenge }: TestRunnerProps) {
-  const { dispatch: sandpackDispatch, listen, sandpack } = useSandpack(); // 💡 MODIFIED: Renamed dispatch to sandpackDispatch
+function TestRunner({ challenge }: { challenge: any }) {
+  const { dispatch: sandpackDispatch, listen, sandpack } = useSandpack();
   const router = useRouter();
   const { id: challengeId } = router.query;
-  const dispatch = useDispatch(); // 💡 NEW: Initialize Redux useDispatch
+  const dispatch = useDispatch();
 
   const [isRunning, setIsRunning] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [testsPassed, setTestsPassed] = useState(false);
   const [hasRun, setHasRun] = useState(false);
+  const [testOutput, setTestOutput] = useState("");
   const [dirty, setDirty] = useState(false);
-
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [submissionPhase, setSubmissionPhase] =
     useState<SubmissionPhase>("idle");
 
-  const initiateTestRun = (forSubmission: boolean = false) => {
-    setIsRunning(true);
-    setIsOpen(true);
-    setHasRun(true);
-    setTestsPassed(false);
-    setDirty(false); // Assume code is clean when starting a new test run
-
-    if (forSubmission) {
-      setSubmissionPhase("confirming_tests");
-      console.log("Submission Phase: confirming_tests");
-    }
-
-    sandpackDispatch({ type: "refresh" }); // 💡 MODIFIED: Use sandpackDispatch
-    setTimeout(() => {
-      sandpackDispatch({ type: "run-all-tests" }); // 💡 MODIFIED: Use sandpackDispatch
-    }, 800);
-  };
-
-  const handleRunTests = () => initiateTestRun(false);
-
-  const handleRunTestsForSubmission = () => {
-    initiateTestRun(true);
-  };
-
+  // Detect code edits
   useEffect(() => {
     const unsubscribe = listen((msg) => {
-      if (msg.type === "state" && msg.state.files) {
-        if (!challenge || !challenge.files) {
-          console.warn(
-            "Challenge data not available for dirty check in TestRunner."
-          );
-          return;
-        }
-
-        let isCurrentlyDirty = false;
-        for (const filePath in sandpack.files) {
-          if (Object.prototype.hasOwnProperty.call(sandpack.files, filePath)) {
-            const currentFile = sandpack.files[filePath];
-            const initialFile = challenge.files[filePath]; // Use challenge prop
-
-            if (
-              currentFile &&
-              typeof (currentFile as any).code === "string" &&
-              initialFile &&
-              typeof (initialFile as any).code === "string"
-            ) {
-              if ((currentFile as any).code !== (initialFile as any).code) {
-                isCurrentlyDirty = true;
-                break;
-              }
-            } else if (currentFile && !initialFile) {
-              isCurrentlyDirty = true;
-              break;
-            }
-          }
-        }
-
-        if (isCurrentlyDirty) {
-          setDirty(true);
-          setTestsPassed(false);
-        } else if (msg.type !== "success" && msg.type !== "start") {
-          setDirty(true);
-          setTestsPassed(false);
-        }
-      } else if (msg.type !== "success" && msg.type !== "start") {
+      if (msg.type === "fs/change") {
         setDirty(true);
         setTestsPassed(false);
       }
     });
     return () => unsubscribe();
-  }, [listen, sandpack.files, challenge, testsPassed]);
+  }, [sandpack]);
 
-  useEffect(() => {
-    const unsubscribe = listen((msg) => {
-      if (msg.type === "test" && msg.event === "total_test_end") {
-        console.log("🟡 total_test_end received, waiting for DOM update...");
+  // --- Run custom backend tests instead of Sandpack tests ---
+  const runCustomTests = useCallback(async (): Promise<boolean> => {
+    setIsRunning(true);
+    setHasRun(true);
+    setIsOpen(true);
 
-        setTimeout(() => {
-          const label = document.querySelector(
-            ".sp-test-spec-label"
-          ) as HTMLElement;
+    try {
+      const userSolutionFiles: Record<string, string> = {};
+      for (const filePath in sandpack.files) {
+        const file = sandpack.files[filePath];
+        if (
+          file &&
+          typeof (file as any).code === "string" &&
+          !(file as any).hidden &&
+          !(file as any).readOnly
+        ) {
+          userSolutionFiles[filePath] = (file as any).code;
+        }
+      }
 
-          if (label) {
-            console.log("🔍 Detected result text:", label.innerText);
+      const response = await apiClient.runUserTests(
+        challengeId as string,
+        userSolutionFiles
+      );
 
-            const passed = label.innerText === "PASS";
+      console.log("🧪 Backend Test Response:", response);
 
-            if (passed) {
-              setTestsPassed(true);
-              setDirty(false);
-            } else {
-              setTestsPassed(false);
-            }
+      const passed = response.passed === true;
 
-            if (submissionPhase === "confirming_tests") {
-              if (passed) {
-                setSubmissionPhase("tests_passed");
-                console.log("Submission Phase: tests_passed");
+      // ✅ Store backend output so frontend shows custom output
+      setTestOutput(response.output || "No output received from backend.");
 
-                setTimeout(async () => {
-                  setSubmissionPhase("submitting_code");
-                  console.log("Submission Phase: submitting_code");
+      if (passed) {
+        setTestsPassed(true);
+        setDirty(false);
+        console.log(`✅ User has passed challenge: ${challengeId}`);
+      } else {
+        setTestsPassed(false);
+      }
 
-                  try {
-                    const editedFilesContent: { [path: string]: string } = {};
+      toast[passed ? "success" : "error"](
+        passed ? "✅ All tests passed!" : "❌ Some tests failed."
+      );
 
-                    if (
-                      !sandpack.files ||
-                      Object.keys(sandpack.files).length === 0
-                    ) {
-                      throw new Error(
-                        "No files found in Sandpack editor for submission."
-                      );
-                    }
+      return passed;
+    } catch (error: any) {
+      console.error("❌ Error running tests:", error);
+      toast.error("Error running tests");
+      setTestsPassed(false);
+      setTestOutput("⚠️ Error running tests: " + error.message);
+      return false;
+    } finally {
+      setIsRunning(false);
+    }
+  }, [sandpack.files, challengeId]);
 
-                    for (const filePath in sandpack.files) {
-                      if (
-                        Object.prototype.hasOwnProperty.call(
-                          sandpack.files,
-                          filePath
-                        )
-                      ) {
-                        const file = sandpack.files[filePath];
-                        if (file && typeof (file as any).code === "string") {
-                          editedFilesContent[filePath] = (file as any).code;
-                        }
-                      }
-                    }
+  // --- Submission flow ---
+  const handleRunTests = () => runCustomTests();
 
-                    if (Object.keys(editedFilesContent).length === 0) {
-                      throw new Error(
-                        "No editable files with content found for submission."
-                      );
-                    }
+  const handleRunTestsForSubmission = async () => {
+    setSubmissionPhase("confirming_tests");
+    const passed = await runCustomTests();
 
-                    console.log(
-                      "Submitting challenge",
-                      challengeId,
-                      "with code:",
-                      editedFilesContent
-                    );
+    if (passed) {
+      setSubmissionPhase("tests_passed");
+      setTimeout(async () => {
+        try {
+          setSubmissionPhase("submitting_code");
 
-                    // 💡 MODIFIED: Call apiClient.submitChallenge and get response
-                    const submissionResponse = await apiClient.submitChallenge(
-                      challengeId as string,
-                      editedFilesContent
-                    );
-
-                    // 💡 NEW: Dispatch Redux action to update user's total points
-                    dispatch(
-                      updateUserTotalPoints(submissionResponse.userPoints)
-                    );
-                    console.log(
-                      "Redux: User total points updated to",
-                      submissionResponse.userPoints
-                    );
-
-                    setSubmissionPhase("submission_success");
-                    toast.success("Challenge completed successfully! 🎉");
-                    console.log("Submission Phase: submission_success");
-
-                    setTimeout(() => {
-                      setIsSubmitModalOpen(false);
-                      router.push("/challenges");
-                    }, 1000);
-                  } catch (error: any) {
-                    setSubmissionPhase("submission_failed");
-                    toast.error(
-                      error.message || "Failed to process submission."
-                    );
-                    console.error("Submission Phase: submission_failed", error);
-                    setIsSubmitModalOpen(false);
-                  }
-                }, 800);
-              } else {
-                setSubmissionPhase("tests_failed");
-                toast.error(
-                  "Submission tests failed. Please refine your code."
-                );
-                console.log("Submission Phase: tests_failed");
-                setIsSubmitModalOpen(false);
-              }
-            }
-          } else {
-            console.log(
-              "⚠️ Could not find .sp-test-spec-label element after test run."
-            );
-            if (submissionPhase === "confirming_tests") {
-              setSubmissionPhase("tests_failed");
-              toast.error("Could not get test results for submission.");
+          const editedFilesContent: Record<string, string> = {};
+          for (const filePath in sandpack.files) {
+            const file = sandpack.files[filePath];
+            if (file && typeof (file as any).code === "string") {
+              editedFilesContent[filePath] = (file as any).code;
             }
           }
 
-          setIsRunning(false);
-        }, 500);
-      }
-    });
+          const submissionResponse = await apiClient.submitChallenge(
+            challengeId as string,
+            editedFilesContent
+          );
 
-    return () => unsubscribe();
-  }, [
-    listen,
-    submissionPhase,
-    sandpack.files,
-    challenge,
-    router,
-    challengeId,
-    dispatch,
-  ]); // 💡 MODIFIED: Added dispatch to dependencies
+          dispatch(updateUserTotalPoints(submissionResponse.userPoints));
+          console.log(
+            "✅ Challenge submitted. User points:",
+            submissionResponse.userPoints
+          );
+
+          setSubmissionPhase("submission_success");
+          toast.success("Challenge submitted successfully!");
+
+          setTimeout(() => {
+            setIsSubmitModalOpen(false);
+            router.push("/challenges");
+          }, 1500);
+        } catch (error: any) {
+          console.error("Submission error:", error);
+          setSubmissionPhase("submission_failed");
+          toast.error("Failed to submit challenge.");
+        }
+      }, 800);
+    } else {
+      setSubmissionPhase("tests_failed");
+      toast.error("Tests failed. Please fix your code before submitting.");
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
+      {/* --- Header --- */}
       <div className="flex items-center justify-between border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
         <div className="flex items-center gap-2">
-          <span className="font-semibold">Tests</span>
+          <span className="font-semibold text-white">Tests</span>
 
+          {/* --- Run Tests --- */}
           <button
             onClick={handleRunTests}
             className={`px-2 py-1 rounded-md text-white transition-colors duration-200 ${
-              isRunning &&
-              submissionPhase !== "confirming_tests" &&
-              submissionPhase !== "submitting_code"
+              isRunning
                 ? "bg-gray-500 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700"
             }`}
-            disabled={
-              isRunning &&
-              submissionPhase !== "confirming_tests" &&
-              submissionPhase !== "submitting_code"
-            }
+            disabled={isRunning}
           >
-            {isRunning &&
-            submissionPhase !== "confirming_tests" &&
-            submissionPhase !== "submitting_code"
-              ? "Running..."
-              : "Run Tests"}
+            {isRunning ? "Running..." : "Run Tests"}
           </button>
 
+          {/* --- Attempt / Submit --- */}
           {hasRun && (
             <button
               onClick={() => {
@@ -291,15 +269,15 @@ function TestRunner({ challenge }: TestRunnerProps) {
                   setIsSubmitModalOpen(true);
                   setSubmissionPhase("idle");
                 } else {
-                  toast.error("⚠️ Please fix errors and rerun tests");
+                  toast.error("⚠️ Please fix your code and rerun tests");
                 }
               }}
-              className={`px-2 py-1 rounded-md text-white transition-colors duration-200 ${
+              className={`px-2 py-1 rounded-md text-white border shadow-md transition-colors duration-200 ${
                 testsPassed && !dirty
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-yellow-600 hover:bg-yellow-700"
+                  ? "bg-green-600 hover:bg-green-700 border-green-400"
+                  : "bg-yellow-600 hover:bg-yellow-700 border-yellow-400"
               }`}
-              disabled={isRunning || isSubmitModalOpen}
+              disabled={isRunning}
             >
               {testsPassed && !dirty ? "Submit" : "Attempt"}
             </button>
@@ -311,33 +289,44 @@ function TestRunner({ challenge }: TestRunnerProps) {
             onClick={() => setIsOpen((prev) => !prev)}
             className="px-2 py-1 rounded-md text-gray-300 hover:text-white"
           >
-            {isOpen ? "▼ Hide" : "▲ Show"}
+            {isOpen ? "▼ Hide Output" : "▲ Show Output"}
           </button>
         )}
       </div>
 
-      <div
-        className={`flex-1 min-h-0 overflow-auto transition-all duration-300 ${
-          isOpen ? "block" : "hidden"
-        }`}
-      >
-        <SandpackTests
-          showVerboseButton={false}
-          showWatchButton={false}
-          style={{
-            width: "100%",
-            height: "100%",
-            backgroundColor: "#0f172a",
-          }}
-        />
-      </div>
+      {/* --- Test Output Placeholder --- */}
+      {isOpen && (
+        <div className="bg-black text-gray-200 text-sm p-3 rounded-md overflow-x-auto border border-gray-700 h-64 font-mono whitespace-pre-wrap flex items-center justify-center">
+          {isRunning ? (
+            // Show spinner while tests are running
+            <div className="flex items-center space-x-2 text-gray-400">
+              <Loader2 className="animate-spin text-[#06ffa5]" size={20} />
+              <span>Running tests...</span>
+            </div>
+          ) : testOutput ? (
+            // ✅ When backend test results arrive
+            <pre className="text-left w-full">{testOutput}</pre>
+          ) : hasRun ? (
+            // When tests finished but output is empty (rare case)
+            <p>
+              {testsPassed
+                ? "✅ All tests passed successfully."
+                : "❌ Some tests failed. Check your logic."}
+            </p>
+          ) : (
+            // Before user ever runs tests
+            <p>Run tests to see output...</p>
+          )}
+        </div>
+      )}
 
+      {/* --- Submission Modal --- */}
       {isSubmitModalOpen && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-[#1a1a2e] p-8 rounded-lg shadow-2xl text-white max-w-sm w-full border border-[#06ffa5]/20">
             <h2 className="text-xl font-bold mb-6 text-center text-[#06ffa5]">
               {submissionPhase === "submission_success"
-                ? "Submission Complete"
+                ? "Submission Complete 🎉"
                 : "Confirm Submission"}
             </h2>
 
@@ -345,7 +334,7 @@ function TestRunner({ challenge }: TestRunnerProps) {
               <>
                 <p className="text-gray-300 mb-6 text-center">
                   Are you sure you want to submit your code? Tests will be
-                  re-run to confirm a passing solution.
+                  re-run to confirm your solution.
                 </p>
                 <div className="flex justify-around space-x-4">
                   <button
@@ -366,52 +355,10 @@ function TestRunner({ challenge }: TestRunnerProps) {
               </>
             )}
 
-            {(submissionPhase === "confirming_tests" ||
-              submissionPhase === "tests_passed" ||
-              submissionPhase === "submitting_code") && (
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  {submissionPhase === "confirming_tests" ? (
-                    <Loader2
-                      className="animate-spin text-[#06ffa5]"
-                      size={20}
-                    />
-                  ) : submissionPhase === "tests_failed" ? (
-                    <XCircle className="text-red-500" size={20} />
-                  ) : (
-                    <CheckCircle className="text-green-500" size={20} />
-                  )}
-                  <span
-                    className={`font-medium ${
-                      submissionPhase === "tests_failed"
-                        ? "text-red-400"
-                        : "text-gray-300"
-                    }`}
-                  >
-                    Running tests...
-                  </span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  {submissionPhase === "submitting_code" ? (
-                    <Loader2
-                      className="animate-spin text-[#06ffa5]"
-                      size={20}
-                    />
-                  ) : submissionPhase === "submission_success" ? (
-                    <CheckCircle className="text-green-500" size={20} />
-                  ) : (
-                    <div className="w-5 h-5 border border-gray-500 rounded-full flex items-center justify-center text-xs text-gray-500"></div>
-                  )}
-                  <span
-                    className={`font-medium ${
-                      submissionPhase === "submitting_code"
-                        ? "text-gray-200"
-                        : "text-gray-400"
-                    }`}
-                  >
-                    Submitting your code...
-                  </span>
-                </div>
+            {submissionPhase === "confirming_tests" && (
+              <div className="flex items-center justify-center space-x-3">
+                <Loader2 className="animate-spin text-[#06ffa5]" size={22} />
+                <span>Running final tests...</span>
               </div>
             )}
 
@@ -423,6 +370,7 @@ function TestRunner({ challenge }: TestRunnerProps) {
                 </p>
               </div>
             )}
+
             {submissionPhase === "submission_failed" && (
               <div className="text-center">
                 <XCircle className="text-red-500 w-16 h-16 mx-auto mb-4" />
@@ -444,6 +392,7 @@ function TestRunner({ challenge }: TestRunnerProps) {
   );
 }
 
+// 💡 The new, simplified ChallengeDetail component
 export default function ChallengeDetail() {
   const router = useRouter();
   const { id } = router.query;
@@ -479,6 +428,34 @@ export default function ChallengeDetail() {
     fetchIndividualChallenge();
   }, [id]);
 
+  // Memoize `files` for SandpackProvider for performance and stability
+  const sandpackFiles = useMemo(() => {
+    const files: Record<
+      string,
+      { code: string; hidden?: boolean; active?: boolean; readOnly?: boolean }
+    > = {};
+    if (challenge && challenge.files) {
+      for (const filePath in challenge.files) {
+        if (Object.prototype.hasOwnProperty.call(challenge.files, filePath)) {
+          const fileData = challenge.files[filePath];
+          if (fileData && typeof fileData.code === "string") {
+            files[filePath] = {
+              code: fileData.code,
+              hidden: fileData.hidden ?? false,
+              active: fileData.active ?? false,
+              readOnly: fileData.readOnly ?? false, // Ensure readOnly is passed
+            };
+          } else {
+            console.warn(
+              `Sanitization: Skipping invalid file data for path: ${filePath}`
+            );
+          }
+        }
+      }
+    }
+    return files;
+  }, [challenge]);
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#0f172a] text-white">
@@ -496,20 +473,27 @@ export default function ChallengeDetail() {
     );
   }
 
-  if (!challenge) {
+  if (!challenge || Object.keys(sandpackFiles).length === 0) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#0f172a] text-red-500">
-        Challenge not found.
+        Challenge not found or invalid/empty challenge data.
       </div>
     );
   }
 
+  // Determine the active file for Sandpack
+  const activeFile =
+    Object.keys(sandpackFiles).find((path) => sandpackFiles[path]?.active) ||
+    Object.keys(sandpackFiles)[0];
+
   return (
     <div className="h-screen flex flex-col bg-[#0f172a] text-white">
+      {/* 💡 NEW: Removed ErrorBoundary wrapping SandpackProvider for minimal setup. Re-add if needed. */}
       <SandpackProvider
+        key={challenge.id} // Important to re-initialize Sandpack when challenge changes
         template="react"
         theme="dark"
-        files={challenge.files ?? {}}
+        files={sandpackFiles}
         customSetup={{
           dependencies: {
             "@testing-library/react": "latest",
@@ -517,53 +501,75 @@ export default function ChallengeDetail() {
             "@testing-library/dom": "latest",
           },
         }}
+        options={{
+          visibleFiles: Object.keys(sandpackFiles).filter(
+            (file) => !sandpackFiles[file]?.hidden
+          ), // Show only non-hidden files
+          activeFile: activeFile,
+          initMode: "lazy",
+          showDevTools: false,
+          autorun: true, // Let preview autorun on changes
+          autoReload: true,
+          // 💡 CRITICAL: Disable Sandpack's built-in test runner features completely
+          testRunner: {
+            autorun: false, // Ensure Sandpack's test runner doesn't run automatically
+            showConsole: false, // Hide Sandpack's internal test console
+            // No need for other testRunner options if we're not using it
+          },
+        }}
       >
         <SandpackLayout>
-          <div className="flex flex-[2] border-b border-gray-700 min-h-0">
-            <div className="flex-[1] border-r border-gray-700 flex flex-col min-h-0">
-              <div className="border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
-                Instructions
-              </div>
-              <div className="flex-1 overflow-auto p-4">
-                <h1 className="text-xl font-bold mb-4">{challenge.title}</h1>
-                <div
-                  className="text-gray-300"
-                  dangerouslySetInnerHTML={{ __html: challenge.instructions }}
-                />
-              </div>
+          {/* Instructions Panel */}
+          <div className="flex-[1] border-r border-gray-700 flex flex-col min-h-0">
+            <div className="border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
+              Instructions
             </div>
-
-            <div className="flex-[2] border-r border-gray-700 flex flex-col min-h-0">
-              <div className="border-b border-gray-700">
-                {challenge.files && (
-                  <FileTabs allowedFiles={Object.keys(challenge.files)} />
-                )}
-              </div>
-              <div className="flex-1 min-h-0 overflow-auto">
-                <CustomAceEditor />
-              </div>
+            <div className="flex-1 overflow-auto p-4">
+              <h1 className="text-xl font-bold mb-4">{challenge.title}</h1>
+              <div
+                dangerouslySetInnerHTML={{ __html: challenge.instructions }}
+                className="text-gray-300"
+              />
             </div>
+          </div>
 
-            <div className="flex-[2] flex flex-col min-h-0">
-              <div className="border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
-                Preview
-              </div>
-              <div className="flex-1 min-h-0 overflow-auto">
-                <SandpackPreview
-                  showOpenInCodeSandbox={false}
-                  showRefreshButton={false}
-                  showSandpackErrorOverlay={false}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    backgroundColor: "white",
-                  }}
+          {/* Ace Editor Panel */}
+          <div className="flex-[2] border-r border-gray-700 flex flex-col min-h-0">
+            <div className="border-b border-gray-700">
+              {Object.keys(sandpackFiles).length > 0 && (
+                <FileTabs
+                  allowedFiles={Object.keys(sandpackFiles).filter(
+                    (file) => !sandpackFiles[file]?.hidden
+                  )}
                 />
-              </div>
+              )}
+            </div>
+            <div className="flex-1 min-h-0 overflow-auto">
+              <CustomAceEditor />
+            </div>
+          </div>
+
+          {/* Sandpack Preview Panel */}
+          <div className="flex-[2] flex flex-col min-h-0">
+            <div className="border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
+              Preview
+            </div>
+            <div className="flex-1 min-h-0 overflow-auto">
+              <SandpackPreview
+                showOpenInCodeSandbox={false}
+                showRefreshButton={false}
+                showSandpackErrorOverlay={false}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  backgroundColor: "white",
+                }}
+              />
             </div>
           </div>
         </SandpackLayout>
 
+        {/* Custom Test Panel */}
         <div className="flex flex-[1] border-t border-gray-700 min-h-0">
           <div className="flex-1 flex flex-col min-h-0">
             <TestRunner challenge={challenge} />

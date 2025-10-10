@@ -1,4 +1,4 @@
-// data/challenges.ts
+// data/challenges.ts (Updated for backend testCode field)
 export const challenges = [
   {
     id: "fragments",
@@ -48,12 +48,13 @@ h1 {
 }
 
 p {
-  color: #cbd5e1; /* Tailwind slate-300 */
-}`,
-        hidden: true,
+  color: #cbd5e1; /* Tailwind slate-300 */}`,
+        hidden: false,
       },
-      "/test/fragments.test.js": {
-        code: `import { render } from "@testing-library/react";
+      // 💡 REMOVED: "/test/fragments.test.js" from files object
+    },
+    // 💡 NEW: Added testCode at the top level
+    testCode: `import { render } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import App from "../App";
 
@@ -71,9 +72,7 @@ describe("Fragments Challenge", () => {
     expect(summaryContainer).not.toBeInTheDocument();
   });
 });`,
-        hidden: true,
-      },
-    },
+    points: 10, // Example points
   },
   {
     id: "counter",
@@ -135,10 +134,12 @@ button {
 button:hover {
   background: #0ea5e9; /* darker cyan */
 }`,
-        hidden: true,
+        hidden: false,
       },
-      "/test/counter.test.js": {
-        code: `import { render, screen, fireEvent } from "@testing-library/react";
+      // 💡 REMOVED: "/test/counter.test.js" from files object
+    },
+    // 💡 NEW: Added testCode at the top level
+    testCode: `import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import App from "../App";
 
@@ -158,9 +159,7 @@ describe("Counter Challenge", () => {
     expect(screen.getByText("Count: 2")).toBeInTheDocument();
   });
 });`,
-        hidden: true,
-      },
-    },
+    points: 20, // Example points
   },
   {
     id: "button-style",
@@ -218,12 +217,13 @@ h1 {
 }
 
 .btn:hover {
-  background: #2563eb; /* Tailwind blue-600 */
-}`,
-        hidden: true,
+  background: #2563eb; /* Tailwind blue-600 */}`,
+        hidden: false,
       },
-      "/test/button.test.js": {
-        code: `import { render, screen } from "@testing-library/react";
+      // 💡 REMOVED: "/test/button.test.js" from files object
+    },
+    // 💡 NEW: Added testCode at the top level
+    testCode: `import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import App from "../App";
 
@@ -245,8 +245,6 @@ describe("Styled Button Challenge", () => {
     expect(submitButton).toHaveClass("btn");
   });
 });`,
-        hidden: true,
-      },
-    },
+    points: 30, // Example points
   },
 ];

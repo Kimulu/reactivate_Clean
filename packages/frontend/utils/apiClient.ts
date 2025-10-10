@@ -4,8 +4,10 @@ interface ChallengeFile {
   code: string;
   active?: boolean;
   hidden?: boolean;
+  readOnly?: boolean; // Added for completeness if your Sandpack files can be read-only
 }
 
+// 💡 MODIFIED: Challenge interface now includes 'testCode'
 export interface Challenge {
   _id: string;
   id: string;
@@ -13,10 +15,25 @@ export interface Challenge {
   difficulty: string;
   instructions: string;
   files: { [key: string]: ChallengeFile };
-  points: number; // 💡 NEW FIELD: Challenges now have a 'points' field
+  testCode: string; // 💡 NEW FIELD: Challenge test code from backend
+  points: number;
   createdAt?: string;
   updatedAt?: string;
   __v?: number;
+}
+
+// 💡 NEW INTERFACE: For individual test results from your backend
+export interface TestResult {
+  title: string;
+  status: "passed" | "failed" | "skipped";
+  message?: string; // Optional: detailed error message for failed tests
+}
+
+// 💡 NEW INTERFACE: For the overall test run response from the backend
+export interface CustomTestRunResponse {
+  passed: boolean; // Overall pass/fail status
+  output: string; // Raw console output from Jest
+  detailedResults: TestResult[]; // Structured array of individual test results
 }
 
 // 💡 NEW INTERFACE: To explicitly define the user info structure from backend auth (including totalPoints)
@@ -49,7 +66,11 @@ const getToken = () => {
 const authFetch = async (url: string, options: RequestInit = {}) => {
   const token = getToken();
   if (!token) {
-    throw new Error("Authentication token missing.");
+    // Redirect to login or show an error if no token is found for an auth-protected route
+    // In a real app, you might want a more sophisticated redirect or global error handling
+    console.error("Authentication token missing for protected route:", url);
+    // As a simple example, we'll throw, but consider a redirect here.
+    throw new Error("Authentication required.");
   }
 
   const headers = {
@@ -77,7 +98,6 @@ const authFetch = async (url: string, options: RequestInit = {}) => {
 };
 
 export const apiClient = {
-  // 💡 MODIFIED: loginUser return type includes UserInfo
   loginUser: async (
     username: string,
     password: string
@@ -94,7 +114,6 @@ export const apiClient = {
     return res.json();
   },
 
-  // 💡 MODIFIED: signupUser return type includes UserInfo
   signupUser: async (
     username: string,
     email: string,
@@ -112,7 +131,6 @@ export const apiClient = {
     return res.json();
   },
 
-  // 💡 MODIFIED: getUserById return type is UserInfo
   getUserById: async (id: string): Promise<UserInfo> => {
     const res = await authFetch(`/api/users/${id}`);
     return res.json();
@@ -149,7 +167,6 @@ export const apiClient = {
     return res.json();
   },
 
-  // 💡 MODIFIED: submitChallenge returns message, submission, and updated userPoints
   submitChallenge: async (
     challengeId: string,
     submittedCode: { [path: string]: string }
@@ -161,10 +178,21 @@ export const apiClient = {
     return res.json();
   },
 
-  // 💡 MODIFIED: getCompletedChallenges now returns an array of CompletedChallengeInfo
   getCompletedChallenges: async (): Promise<CompletedChallengeInfo[]> => {
     const res = await authFetch(`/api/challenges/completed`, {
       method: "GET",
+    });
+    return res.json();
+  },
+
+  // 💡 NEW FUNCTION: To call your backend's custom test runner
+  runUserTests: async (
+    challengeId: string,
+    userSolutionFiles: { [path: string]: string } // An object like { 'index.js': 'user code' }
+  ): Promise<CustomTestRunResponse> => {
+    const res = await authFetch(`/api/challenges/${challengeId}/run-tests`, {
+      method: "POST",
+      body: JSON.stringify({ userSolutionFiles }),
     });
     return res.json();
   },

@@ -16,6 +16,13 @@ router.post(
   challengeController.submitChallenge
 );
 
+// 💡 NEW ROUTE: For running custom tests on user code
+router.post(
+  "/:challengeId/run-tests",
+  protect, // Protect this route if only logged-in users can run tests
+  challengeController.runChallengeTests
+);
+
 // 2. General Routes (e.g., / or /:id)
 router.get("/:id", challengeController.getChallengeById);
 router.get("/", challengeController.getChallenges);

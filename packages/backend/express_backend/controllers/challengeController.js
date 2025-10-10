@@ -3,7 +3,7 @@
 const Challenge = require("../models/Challenge");
 const UserChallengeSubmission = require("../models/UserChallengeSubmission");
 const User = require("../models/User"); // 💡 NEW: Import User model to update totalPoints
-
+const testRunnerService = require("../utils/testRunnerService");
 // @route GET /api/challenges
 // @desc Get all challenges
 // @access Public
@@ -145,5 +145,46 @@ exports.getCompletedChallenges = async (req, res) => {
     res
       .status(500)
       .json({ message: "Server error fetching completed challenges" });
+  }
+};
+
+exports.runChallengeTests = async (req, res) => {
+  const { challengeId } = req.params;
+  // userSolutionFiles will be an object like { 'index.js': 'console.log("hello");' }
+  const { userSolutionFiles } = req.body;
+
+  if (!userSolutionFiles || Object.keys(userSolutionFiles).length === 0) {
+    return res
+      .status(400)
+      .json({ message: "User solution files are required." });
+  }
+
+  try {
+    const challenge = await Challenge.findOne({ id: challengeId }).select(
+      "testCode"
+    ); // 💡 Ensure your Challenge model has a 'testCode' field
+    if (!challenge) {
+      return res.status(404).json({ message: "Challenge not found" });
+    }
+    if (!challenge.testCode) {
+      return res
+        .status(400)
+        .json({ message: "Challenge does not have associated test code." });
+    }
+
+    // Call the custom test runner service
+    const results = await testRunnerService.runTests(
+      challengeId,
+      userSolutionFiles,
+      challenge.testCode
+    );
+
+    res.status(200).json(results);
+  } catch (error) {
+    console.error("Error running challenge tests:", error);
+    res.status(500).json({
+      message: "Server error during test execution.",
+      error: error.message,
+    });
   }
 };
