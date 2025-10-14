@@ -1,12 +1,12 @@
-const { exec } = require("child_process");
+const { spawn } = require("child_process");
 const fs = require("fs").promises;
 const path = require("path");
+const fsExtra = require("fs-extra");
 const { v4: uuidv4 } = require("uuid");
 const cliProgress = require("cli-progress");
 const stripAnsi = require("strip-ansi").default;
 const chalk = require("chalk");
 
-// Disable Jest colors and force neutral terminal output
 process.env.FORCE_COLOR = "0";
 
 // ---------- Helper to parse and format Jest JSON ----------
@@ -19,7 +19,6 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
 
     const totalTests = data.numTotalTests || 0;
 
-    // Fancy progress bar
     const progressBar = new cliProgress.SingleBar(
       {
         format: `${chalk.cyan("{bar}")} {percentage}% | {value}/{total} tests`,
@@ -32,7 +31,6 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
 
     progressBar.start(totalTests, 0);
 
-    // Print each test suite
     for (const testFile of data.testResults || []) {
       const fileName = path.basename(testFile.name || "Test");
       const hasFailures = testFile.assertionResults.some(
@@ -53,7 +51,6 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
           : `${hasFailures ? "FAIL" : "PASS"} ${fileName}`
       );
 
-      // Sequential test rendering
       for (const [index, assertion] of testFile.assertionResults.entries()) {
         const passed = assertion.status === "passed";
         const icon = passed ? "✅" : "❌";
@@ -72,7 +69,6 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
             : `  ${icon} ${assertion.fullName}`
         );
 
-        // Failure snippet
         if (!passed && assertion.failureMessages?.length > 0) {
           const message = assertion.failureMessages
             .join("\n")
@@ -85,12 +81,11 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
         }
       }
 
-      lines.push(""); // spacing between files
+      lines.push("");
     }
 
     progressBar.stop();
 
-    // Summary section — clean, emoji-enhanced
     const total = passedCount + failedCount;
     const greenBar = chalk.green("▰".repeat(passedCount));
     const redBar = chalk.red("▱".repeat(failedCount));
@@ -120,6 +115,56 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
   }
 };
 
+// ---------- Run Jest with proper waiting ----------
+async function runJestAndWait(tempDir, testFileName, jestConfigPath) {
+  return new Promise((resolve, reject) => {
+    const args = [
+      "jest",
+      "--json",
+      "--colors=false",
+      "--silent",
+      "--noStackTrace",
+      "--verbose=false",
+      `--outputFile=jest-results.json`,
+      `--testPathPatterns="${testFileName}"`,
+      `--config="${jestConfigPath}"`,
+      "--runInBand",
+    ];
+
+    const jestProcess = spawn("npx", args, {
+      cwd: tempDir,
+      shell: true,
+      env: { ...process.env, FORCE_COLOR: "0" },
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    jestProcess.stdout.on("data", (data) => (stdout += data.toString()));
+    jestProcess.stderr.on("data", (data) => (stderr += data.toString()));
+
+    jestProcess.on("error", reject);
+
+    jestProcess.on("close", async (code) => {
+      const resultsPath = path.join(tempDir, "jest-results.json");
+      let retries = 0;
+      const maxRetries = 10;
+
+      while (retries < maxRetries) {
+        try {
+          const rawJson = await fs.readFile(resultsPath, "utf8");
+          return resolve({ stdout, stderr, rawJson });
+        } catch {
+          await new Promise((r) => setTimeout(r, 300));
+          retries++;
+        }
+      }
+
+      reject(new Error("Jest results not ready after retries"));
+    });
+  });
+}
+
 // ---------- Main test runner ----------
 exports.runTests = async (
   challengeId,
@@ -128,17 +173,17 @@ exports.runTests = async (
   colorize = true
 ) => {
   const tempDir = path.join(__dirname, "..", "temp_challenge_runs", uuidv4());
+  const backendRoot = path.resolve(__dirname, "..");
   let testResults = {
     passed: false,
     output: "An unexpected error occurred.",
     detailedResults: [],
   };
-  const backendRoot = path.resolve(__dirname, "..");
 
   try {
     await fs.mkdir(tempDir, { recursive: true });
 
-    // Write user solution files
+    // Write user files
     for (const filePath in userSolutionFiles) {
       const fullPath = path.join(tempDir, filePath);
       await fs.mkdir(path.dirname(fullPath), { recursive: true });
@@ -150,8 +195,8 @@ exports.runTests = async (
     const targetNodeModules = path.join(tempDir, "node_modules");
     try {
       await fs.symlink(sourceNodeModules, targetNodeModules, "junction");
-    } catch (symlinkError) {
-      console.warn("Symlink failed, skipping:", symlinkError.message);
+    } catch {
+      console.warn("Symlink failed, skipping...");
     }
 
     // Copy config files
@@ -182,59 +227,23 @@ exports.runTests = async (
     );
     await fs.writeFile(testFilePath, adjustedTestContent);
 
-    // Run Jest
     const jestConfig = path.join(tempDir, "jest.config.js");
-    const jestCommand = [
-      "npx jest",
-      "--json",
-      "--colors=false",
-      "--silent",
-      "--noStackTrace",
-      "--verbose=false",
-      `--outputFile=jest-results.json`,
-      `--testPathPatterns="${testFileName}"`,
-      `--config="${jestConfig}"`,
-    ].join(" ");
 
-    const { stdout, stderr } = await new Promise((resolve) => {
-      exec(
-        jestCommand,
-        {
-          cwd: tempDir,
-          timeout: 15000,
-          env: { ...process.env, FORCE_COLOR: "0" },
-        },
-        (error, stdout, stderr) => {
-          resolve({ stdout, stderr });
-        }
-      );
-    });
+    // 🧠 Wait for Jest to fully complete
+    const { stdout, stderr, rawJson } = await runJestAndWait(
+      tempDir,
+      testFileName,
+      jestConfig
+    );
 
-    // --- FIX 1: Delay and retry reading jest-results.json ---
-    const jestResultsPath = path.join(tempDir, "jest-results.json");
-    let rawJson = "";
-    try {
-      await new Promise((r) => setTimeout(r, 300)); // Wait a bit for Jest to finish writing
-      rawJson = await fs.readFile(jestResultsPath, "utf8");
-    } catch (e1) {
-      console.warn("Jest results not ready, retrying...");
-      await new Promise((r) => setTimeout(r, 300));
-      try {
-        rawJson = await fs.readFile(jestResultsPath, "utf8");
-      } catch (e2) {
-        console.error("Failed to read Jest results after retry:", e2.message);
-      }
-    }
-
-    const cleanedStdout = stripAnsi(stdout || ""); // 🧹 remove ANSI junk
+    const cleanedStdout = stripAnsi(stdout || "");
     const parsed = await parseJestOutput(rawJson || "{}", colorize);
 
-    // Always clean parsed output too
     testResults.output = stripAnsi(parsed.output + "\n" + cleanedStdout.trim());
     testResults.passed = parsed.passed;
     testResults.detailedResults = parsed.detailedResults;
   } catch (error) {
-    console.error("Error during custom test execution:", error);
+    console.error("Error during test execution:", error);
     testResults = {
       passed: false,
       output: `Test runner internal error: ${error.message}`,
@@ -247,12 +256,22 @@ exports.runTests = async (
       ],
     };
   } finally {
-    // --- FIX 2: Delay before cleanup to avoid EBUSY ---
-    try {
-      await new Promise((r) => setTimeout(r, 500));
-      await fs.rm(tempDir, { recursive: true, force: true });
-    } catch (cleanupError) {
-      console.warn("Cleanup failed (locked resource):", cleanupError.message);
+    // 🧹 Retry cleanup if Windows has a lock
+    let retries = 0;
+    const maxRetries = 5;
+    while (retries < maxRetries) {
+      try {
+        await fsExtra.remove(tempDir);
+        break;
+      } catch (err) {
+        if (err.code === "EBUSY") {
+          await new Promise((r) => setTimeout(r, 400));
+          retries++;
+        } else {
+          console.warn("Cleanup failed:", err.message);
+          break;
+        }
+      }
     }
   }
 

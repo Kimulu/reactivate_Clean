@@ -19,6 +19,7 @@ import {
 } from "@/utils/apiClient";
 import { useDispatch } from "react-redux";
 import { updateUserTotalPoints } from "@/store/userSlice";
+import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 // --- START CustomTestDisplay Component ---
 // This is your custom display for test results, replacing SandpackTests
@@ -487,10 +488,36 @@ export default function ChallengeDetail() {
     Object.keys(sandpackFiles)[0];
 
   return (
-    <div className="h-screen flex flex-col bg-[#0f172a] text-white">
-      {/* 💡 NEW: Removed ErrorBoundary wrapping SandpackProvider for minimal setup. Re-add if needed. */}
+    <div className="h-full flex flex-col bg-[#0f172a] text-white">
+      {/* --- Header Bar --- */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-[#0f172a]">
+        <button
+          onClick={() => router.push("/challenges")}
+          className="flex items-center gap-2 text-gray-300 hover:text-[#06ffa5] transition-colors"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-5 h-5"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 19.5L8.25 12l7.5-7.5"
+            />
+          </svg>
+          <span className="font-medium">Back to Challenges</span>
+        </button>
+
+        <h1 className="text-lg font-semibold text-white">
+          {challenge.title || "Challenge"}
+        </h1>
+      </div>{" "}
       <SandpackProvider
-        key={challenge.id} // Important to re-initialize Sandpack when challenge changes
+        key={challenge.id}
         template="react"
         theme="dark"
         files={sandpackFiles}
@@ -504,77 +531,107 @@ export default function ChallengeDetail() {
         options={{
           visibleFiles: Object.keys(sandpackFiles).filter(
             (file) => !sandpackFiles[file]?.hidden
-          ), // Show only non-hidden files
+          ),
           activeFile: activeFile,
           initMode: "lazy",
           showDevTools: false,
-          autorun: true, // Let preview autorun on changes
+          autorun: true,
           autoReload: true,
-          // 💡 CRITICAL: Disable Sandpack's built-in test runner features completely
           testRunner: {
-            autorun: false, // Ensure Sandpack's test runner doesn't run automatically
-            showConsole: false, // Hide Sandpack's internal test console
-            // No need for other testRunner options if we're not using it
+            autorun: false,
+            showConsole: false,
           },
         }}
       >
-        <SandpackLayout>
-          {/* Instructions Panel */}
-          <div className="flex-[1] border-r border-gray-700 flex flex-col min-h-0">
-            <div className="border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
-              Instructions
-            </div>
-            <div className="flex-1 overflow-auto p-4">
-              <h1 className="text-xl font-bold mb-4">{challenge.title}</h1>
-              <div
-                dangerouslySetInnerHTML={{ __html: challenge.instructions }}
-                className="text-gray-300"
-              />
-            </div>
-          </div>
+        {/* Wrap everything inside a vertical PanelGroup */}
+        <PanelGroup direction="vertical" style={{ height: "570px" }}>
+          {/* === Main Coding Area === */}
+          <Panel defaultSize={75} minSize={50}>
+            <SandpackLayout
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+              }}
+            >
+              <PanelGroup direction="horizontal">
+                {/* Instructions */}
+                <Panel defaultSize={20} minSize={10}>
+                  <div className="border-r border-gray-700 flex flex-col h-full">
+                    <div className="border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
+                      Instructions
+                    </div>
+                    <div className="flex-1 overflow-auto p-4">
+                      <h1 className="text-xl font-bold mb-4">
+                        {challenge.title}
+                      </h1>
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: challenge.instructions,
+                        }}
+                        className="text-gray-300"
+                      />
+                    </div>
+                  </div>
+                </Panel>
 
-          {/* Ace Editor Panel */}
-          <div className="flex-[2] border-r border-gray-700 flex flex-col min-h-0">
-            <div className="border-b border-gray-700">
-              {Object.keys(sandpackFiles).length > 0 && (
-                <FileTabs
-                  allowedFiles={Object.keys(sandpackFiles).filter(
-                    (file) => !sandpackFiles[file]?.hidden
-                  )}
-                />
-              )}
-            </div>
-            <div className="flex-1 min-h-0 overflow-auto">
-              <CustomAceEditor />
-            </div>
-          </div>
+                {/* Handle */}
+                <PanelResizeHandle className="w-1 bg-gray-800 hover:bg-[#06ffa5] transition-colors" />
 
-          {/* Sandpack Preview Panel */}
-          <div className="flex-[2] flex flex-col min-h-0">
-            <div className="border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
-              Preview
-            </div>
-            <div className="flex-1 min-h-0 overflow-auto">
-              <SandpackPreview
-                showOpenInCodeSandbox={false}
-                showRefreshButton={false}
-                showSandpackErrorOverlay={false}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  backgroundColor: "white",
-                }}
-              />
-            </div>
-          </div>
-        </SandpackLayout>
+                {/* Editor */}
+                <Panel defaultSize={40} minSize={25}>
+                  <div className="border-r border-gray-700 flex flex-col h-full">
+                    <div className="border-b border-gray-700">
+                      {Object.keys(sandpackFiles).length > 0 && (
+                        <FileTabs
+                          allowedFiles={Object.keys(sandpackFiles).filter(
+                            (file) => !sandpackFiles[file]?.hidden
+                          )}
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 overflow-auto">
+                      <CustomAceEditor />
+                    </div>
+                  </div>
+                </Panel>
 
-        {/* Custom Test Panel */}
-        <div className="flex flex-[1] border-t border-gray-700 min-h-0">
-          <div className="flex-1 flex flex-col min-h-0">
-            <TestRunner challenge={challenge} />
-          </div>
-        </div>
+                <PanelResizeHandle className="w-1 bg-gray-800 hover:bg-[#06ffa5] transition-colors" />
+
+                {/* Preview */}
+                <Panel defaultSize={40} minSize={25}>
+                  <div className="flex flex-col h-full">
+                    <div className="border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
+                      Preview
+                    </div>
+                    <div className="flex-1 overflow-auto">
+                      <SandpackPreview
+                        showOpenInCodeSandbox={false}
+                        showRefreshButton={false}
+                        showSandpackErrorOverlay={false}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          backgroundColor: "white",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </Panel>
+              </PanelGroup>
+            </SandpackLayout>
+          </Panel>
+
+          {/* Vertical Resize Handle between main and tests */}
+          <PanelResizeHandle className="h-2 bg-gray-800 hover:bg-[#06ffa5] transition-colors cursor-row-resize" />
+
+          {/* === Test Runner Section === */}
+          <Panel defaultSize={25} minSize={10}>
+            <div className="w-full border-t border-gray-700 flex flex-col h-full bg-[#0f172a]">
+              <TestRunner challenge={challenge} />
+            </div>
+          </Panel>
+        </PanelGroup>
       </SandpackProvider>
     </div>
   );
