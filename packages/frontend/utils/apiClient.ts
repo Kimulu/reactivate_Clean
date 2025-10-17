@@ -50,6 +50,12 @@ export interface CompletedChallengeInfo {
   pointsEarned: number; // 💡 NEW FIELD: Points earned for this specific challenge
 }
 
+// 💡 NEW INTERFACE: For a single entry on the leaderboard
+export interface LeaderboardEntry {
+  username: string;
+  totalPoints: number;
+}
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL as string;
 
 const getToken = () => {
@@ -194,6 +200,26 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify({ userSolutionFiles }),
     });
+    return res.json();
+  },
+
+  getLeaderboard: async (): Promise<LeaderboardEntry[]> => {
+    console.log("apiClient: Attempting to fetch leaderboard with token."); // 💡 NEW LOG
+    const res = await authFetch(`/api/users/leaderboard`, {
+      // 💡 CRITICAL CHANGE: Use authFetch
+      method: "GET",
+      // authFetch already sets Content-Type and Authorization header
+    });
+
+    // We keep the error handling consistent with other authFetch calls
+    // The error will now likely be from the backend if token is invalid/expired etc.
+    if (!res.ok) {
+      // This check is technically redundant as authFetch throws on !res.ok, but kept for clarity/safety.
+      const errorData = await res.json().catch(() => null);
+      console.error("apiClient: Leaderboard fetch error data:", errorData);
+      throw new Error(errorData?.message || "Failed to fetch leaderboard");
+    }
+
     return res.json();
   },
 };

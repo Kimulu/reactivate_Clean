@@ -1,24 +1,24 @@
 // routes/userRoutes.js
+
 const express = require("express");
 const User = require("../models/User");
-// 💡 ADD: Import the authentication middleware
 const { protect } = require("../middleware/authMiddleware");
 const router = express.Router();
+const userController = require("../controllers/userController");
 
 // @route GET /api/users/:id
 // @desc Get user by ID (without password)
 // @access Private
-// 💡 FIX: Added the 'protect' middleware here.
+
+router.get("/leaderboard", protect, userController.getLeaderboard);
+
 router.get("/:id", protect, async (req, res) => {
   try {
-    // 💡 SECURITY: Only allow the logged-in user to fetch their own profile
-    // This is optional, but highly recommended for private routes.
     if (req.user._id.toString() !== req.params.id) {
       return res
         .status(403)
         .json({ msg: "Not authorized to view this profile" });
-    } // The middleware already ensures req.user exists, but we fetch the data again if needed
-
+    }
     const user = await User.findById(req.params.id).select("-password");
     if (!user) {
       return res.status(404).json({ msg: "User not found" });
