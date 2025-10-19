@@ -1,6 +1,6 @@
 import {
   Code,
-  Users,
+  Users, // 💡 Already imported, used for Community icon
   Trophy,
   Zap,
   User as UserIcon,
@@ -32,6 +32,7 @@ export function Sidebar() {
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: Code, label: "Challenges", href: "/challenges" },
+    // 💡 CONFIRMED: Community link is here
     { icon: Users, label: "Community", href: "/community" },
     { icon: Trophy, label: "Leaderboard", href: "/leaderboard" },
     { icon: Settings, label: "Settings", href: "/settings" },
@@ -66,7 +67,10 @@ export function Sidebar() {
         <ul className="space-y-2 relative">
           {navItems.map((item, index) => {
             const Icon = item.icon;
-            const isActive = router.pathname === item.href;
+            const isActive =
+              router.pathname === item.href ||
+              (item.href.startsWith("/profile") &&
+                router.pathname.startsWith("/profile"));
 
             return (
               <li key={index} className="relative">
@@ -99,7 +103,7 @@ export function Sidebar() {
             );
           })}
 
-          {/* 💡 Display User Points */}
+          {/* Display User Points */}
           {hasMounted && user?.id && (
             <li className="pt-4 border-t border-white/10 mt-4">
               <div className="flex items-center space-x-3 px-4 py-3 text-white/80">

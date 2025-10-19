@@ -55,6 +55,40 @@ export interface LeaderboardEntry {
   username: string;
   totalPoints: number;
 }
+// 💡 NEW INTERFACE: For a Comment on a Community Post
+export interface CommunityComment {
+  _id: string;
+  user: string; // User ID
+  username: string; // Denormalized username
+  text: string;
+  createdAt: string;
+}
+
+// 💡 NEW INTERFACE: For a Community Post (Solution or Discussion)
+export interface CommunityPost {
+  _id: string;
+  user: {
+    _id: string;
+    username: string;
+    totalPoints: number;
+  }; // Populated user info
+  challenge?: {
+    _id: string;
+    id: string;
+    title: string;
+  }; // Optional: Populated challenge info if it's a solution
+  challengeId?: string;
+  title: string;
+  codeContent?: { [path: string]: string }; // For solution posts
+  body?: string; // For discussion posts or solution descriptions
+  type: "solution" | "discussion";
+  tags?: string[];
+  comments: CommunityComment[];
+  upvotes: string[]; // Array of user IDs
+  downvotes: string[]; // Array of user IDs
+  createdAt: string;
+  updatedAt: string;
+}
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL as string;
 
@@ -220,6 +254,78 @@ export const apiClient = {
       throw new Error(errorData?.message || "Failed to fetch leaderboard");
     }
 
+    return res.json();
+  },
+
+  createCommunityPost: async (postData: {
+    challenge?: string;
+    challengeId?: string;
+    title: string;
+    codeContent?: { [path: string]: string };
+    body?: string;
+    type: "solution" | "discussion";
+    tags?: string[];
+  }): Promise<{ message: string; post: CommunityPost }> => {
+    const res = await authFetch(`/api/community/posts`, {
+      method: "POST",
+      body: JSON.stringify(postData),
+    });
+    return res.json();
+  },
+
+  // 💡 FIX: Use authFetch for getCommunityPosts
+  getCommunityPosts: async (): Promise<CommunityPost[]> => {
+    console.log("apiClient: Attempting to fetch community posts with token."); // 💡 NEW LOG
+    const res = await authFetch(`/api/community/posts`, {
+      // 💡 CRITICAL CHANGE: Use authFetch
+      method: "GET",
+      // authFetch handles headers
+    });
+    return res.json();
+  },
+
+  // 💡 FIX: Use authFetch for getCommunityPostById
+  getCommunityPostById: async (postId: string): Promise<CommunityPost> => {
+    console.log(
+      `apiClient: Attempting to fetch community post ${postId} with token.`
+    ); // 💡 NEW LOG
+    const res = await authFetch(`/api/community/posts/${postId}`, {
+      // 💡 CRITICAL CHANGE: Use authFetch
+      method: "GET",
+      // authFetch handles headers
+    });
+    return res.json();
+  },
+
+  // 💡 NEW: Add a comment to a community post
+  addCommunityComment: async (
+    postId: string,
+    text: string
+  ): Promise<{ message: string; comment: CommunityComment }> => {
+    const res = await authFetch(`/api/community/posts/${postId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    });
+    return res.json();
+  },
+
+  // 💡 NEW (Optional): Upvote a post
+  upvoteCommunityPost: async (
+    postId: string
+  ): Promise<{ message: string; upvotes: number; downvotes: number }> => {
+    const res = await authFetch(`/api/community/posts/${postId}/upvote`, {
+      method: "POST",
+    });
+    return res.json();
+  },
+
+  // 💡 NEW (Optional): Downvote a post
+  downvoteCommunityPost: async (
+    postId: string
+  ): Promise<{ message: string; upvotes: number; downvotes: number }> => {
+    const res = await authFetch(`/api/community/posts/${postId}/downvote`, {
+      method: "POST",
+    });
     return res.json();
   },
 };

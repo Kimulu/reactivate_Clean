@@ -6,7 +6,7 @@ const authRouter = require("./routes/auth"); // Assuming this is for your login/
 const userRoutes = require("./routes/userRoutes"); // 💡 Import user routes
 // 💡 NEW: Import challenge routes
 const challengeRoutes = require("./routes/challengeRoutes"); // Assuming your challengeRoutes.js is in the ./routes folder
-
+const communityRoutes = require("./routes/communityRoutes"); // 💡 NEW: Import community routes
 // Load environment variables from .env file
 dotenv.config();
 
@@ -35,5 +35,6 @@ app.use("/api", authRouter); // Your authentication routes (e.g., /api/login, /a
 app.use("/api/users", userRoutes); // Your protected user routes (e.g., /api/users/:id)
 // 💡 NEW: Mount the challenge routes
 app.use("/api/challenges", challengeRoutes); // Your challenge API routes (e.g., /api/challenges)
+app.use("/api/community", communityRoutes); // 💡 NEW: Mount community routes
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
