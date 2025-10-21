@@ -37,4 +37,10 @@ router.get(
   userController.getUserChallengeSubmission
 );
 
+// 💡 NEW ROUTE: Get user's highest challenge score
+router.get(
+  "/:userId/highest-score",
+  protect,
+  userController.getHighestChallengeScore
+);
 module.exports = router;

@@ -238,23 +238,31 @@ export const apiClient = {
   },
 
   getLeaderboard: async (): Promise<LeaderboardEntry[]> => {
-    console.log("apiClient: Attempting to fetch leaderboard with token.");
-    // 💡 MODIFIED: Reverted to plain fetch for public leaderboard (if backend route is public)
-    const res = await fetch(`${BASE_URL}/api/users/leaderboard`, {
+    console.log(
+      "apiClient: Attempting to fetch leaderboard with token via authFetch."
+    ); // 💡 NEW LOG
+    const res = await authFetch(`/api/users/leaderboard`, {
+      // 💡 CRITICAL CHANGE: Use authFetch
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      // authFetch already handles 'Content-Type' and 'Authorization' header
     });
 
+    // authFetch will throw on !res.ok, so this if-block is technically redundant,
+    // but we can keep it for consistent logging or extra processing if needed.
+    // However, authFetch itself provides a more robust error message.
     if (!res.ok) {
+      // This line will typically not be reached if authFetch throws first
       const errorData = await res.json().catch(() => null);
-      console.error("apiClient: Leaderboard fetch error data:", errorData);
+      console.error(
+        "apiClient: Leaderboard fetch error data (after authFetch):",
+        errorData
+      );
       throw new Error(errorData?.message || "Failed to fetch leaderboard");
     }
 
     return res.json();
   },
+
   createCommunityPost: async (postData: {
     challenge?: string; // Challenge MongoDB _id
     challengeId?: string; // Challenge custom ID
@@ -330,6 +338,23 @@ export const apiClient = {
       throw new Error(
         errorData?.message ||
           `Failed to fetch submission for challenge ${challengeId}.`
+      );
+    }
+    return res.json();
+  },
+
+  // 💡 NEW: Get a specific user's highest points earned in a single challenge
+  getHighestChallengeScore: async (
+    userId: string
+  ): Promise<{ highestScore: number }> => {
+    const res = await authFetch(`/api/users/${userId}/highest-score`, {
+      method: "GET",
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(
+        errorData?.message ||
+          `Failed to fetch highest score for user ${userId}.`
       );
     }
     return res.json();

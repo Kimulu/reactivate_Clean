@@ -70,3 +70,38 @@ exports.getUserChallengeSubmission = async (req, res) => {
     res.status(500).json({ message: "Server error fetching submission." });
   }
 };
+
+// 💡 NEW: @route GET /api/users/:userId/highest-score
+// @desc Get a specific user's highest points earned in a single challenge submission
+// @access Private (only the user themselves or admin can see it)
+exports.getHighestChallengeScore = async (req, res) => {
+  const { userId } = req.params;
+  const loggedInUserId = req.user._id;
+
+  if (loggedInUserId.toString() !== userId.toString()) {
+    return res
+      .status(403)
+      .json({ message: "Not authorized to view this user's highest score." });
+  }
+
+  try {
+    const highestScoreSubmission = await UserChallengeSubmission.findOne({
+      user: loggedInUserId,
+      completed: true,
+    })
+      .sort({ pointsEarned: -1 }) // Sort by highest points earned
+      .select("pointsEarned -_id"); // Select only pointsEarned
+
+    const highestScore = highestScoreSubmission
+      ? highestScoreSubmission.pointsEarned
+      : 0;
+
+    res.status(200).json({ highestScore });
+  } catch (err) {
+    console.error(
+      `Error fetching highest score for user ${userId}:`,
+      err.message
+    );
+    res.status(500).json({ message: "Server error fetching highest score." });
+  }
+};
