@@ -10,8 +10,9 @@ import {
 } from "@/utils/apiClient";
 import toast from "react-hot-toast";
 import { Loader2 } from "lucide-react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store";
+import { setAllChallenges } from "@/store/challengeSlice"; // 💡 NEW: Import setAllChallenges
 
 export default function Dashboard() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
@@ -26,6 +27,7 @@ export default function Dashboard() {
   // We still use user.totalPoints from Redux as a dependency for re-fetching
   const userTotalPoints = user.totalPoints;
   const isLoggedIn = !!user.id; // 💡 NEW: A clear flag for login status
+  const dispatch = useDispatch(); // 💡 NEW: Initialize Redux dispatch
 
   console.log("Dashboard - User Total Points from Redux:", userTotalPoints); // For debugging
 
@@ -38,6 +40,7 @@ export default function Dashboard() {
         // Fetch all challenges (public)
         const challengesData: Challenge[] = await apiClient.getChallenges();
         setChallenges(challengesData);
+        dispatch(setAllChallenges(challengesData)); // 💡 NEW: Dispatch to Redux
 
         // 💡 CRITICAL FIX: Only fetch completed challenges if the user is logged in
         if (isLoggedIn) {
@@ -75,7 +78,7 @@ export default function Dashboard() {
     fetchDashboardData();
     // 💡 MODIFIED: Depend on `isLoggedIn` to re-run when auth status changes
     // `userTotalPoints` is still a good dependency for re-fetching points-related data
-  }, [isLoggedIn, userTotalPoints]);
+  }, [isLoggedIn, userTotalPoints, dispatch]);
 
   return (
     <ProtectedRoute>

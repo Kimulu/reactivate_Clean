@@ -2,11 +2,13 @@
 import { configureStore } from "@reduxjs/toolkit";
 import userReducer, { setUser } from "./userSlice";
 import sandpackReducer from "./sandpackSlice"; // 💡 NEW: Import sandpackReducer
+import challengeReducer from "./challengeSlice"; // 💡 NEW: Import challengeReducer
 
 export const store = configureStore({
   reducer: {
     user: userReducer,
     sandpack: sandpackReducer, // 💡 NEW: Add sandpackReducer
+    challenges: challengeReducer, // 💡 NEW: Add challengeReducer
   },
 });
 

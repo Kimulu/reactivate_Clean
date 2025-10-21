@@ -17,12 +17,10 @@ exports.createPost = async (req, res) => {
       .json({ message: "Title and type are required for a post." });
   }
   if (type === "solution" && (!challenge || !challengeId || !codeContent)) {
-    return res
-      .status(400)
-      .json({
-        message:
-          "Solution posts require challenge, challengeId, and codeContent.",
-      });
+    return res.status(400).json({
+      message:
+        "Solution posts require challenge, challengeId, and codeContent.",
+    });
   }
 
   try {
@@ -55,11 +53,40 @@ exports.createPost = async (req, res) => {
 // @route GET /api/community/posts
 // @desc Get all community posts (with pagination/filtering later)
 // @access Public (or Private if desired)
+// @route GET /api/community/posts
+// @desc Get all community posts, sorted by vote score (upvotes - downvotes)
+// @access Private (due to router.use(protect))
 exports.getPosts = async (req, res) => {
   try {
-    const posts = await CommunityPost.find({})
-      .populate("user", "username totalPoints") // Populate user details
-      .sort({ createdAt: -1 }); // Latest posts first
+    // 💡 MODIFIED: Use aggregate to calculate voteScore and sort
+    const posts = await CommunityPost.aggregate([
+      {
+        $addFields: {
+          voteScore: {
+            $subtract: [{ $size: "$upvotes" }, { $size: "$downvotes" }],
+          },
+        },
+      },
+      { $sort: { voteScore: -1, createdAt: -1 } }, // Sort by voteScore descending, then by createdAt
+      {
+        $lookup: {
+          from: "users", // MongoDB collection name for User model
+          localField: "user",
+          foreignField: "_id",
+          as: "user", // Rename populated field to ‘user’ (array with single user)
+        },
+      },
+      { $unwind: "$user" }, // Replace user ObjectId with actual user document
+      {
+        $project: {
+          // Select fields to return and shape document (needed after $lookup)
+          __v: 0, // Exclude Mongoose version field
+          "user.password": 0, // 💡 NEW: Exclude user password for security
+          "user.__v": 0, // 💡 NEW: Exclude user version field
+          "comments.user": 0, // Exclude user from the comments (if not populating)
+        },
+      },
+    ]);
 
     res.status(200).json(posts);
   } catch (err) {
@@ -151,13 +178,11 @@ exports.upvotePost = async (req, res) => {
       );
     }
     await post.save();
-    res
-      .status(200)
-      .json({
-        message: "Post upvoted/unupvoted successfully!",
-        upvotes: post.upvotes.length,
-        downvotes: post.downvotes.length,
-      });
+    res.status(200).json({
+      message: "Post upvoted/unupvoted successfully!",
+      upvotes: post.upvotes.length,
+      downvotes: post.downvotes.length,
+    });
   } catch (err) {
     console.error("Error upvoting post:", err.message);
     res.status(500).json({ message: "Server error upvoting post." });
@@ -192,13 +217,11 @@ exports.downvotePost = async (req, res) => {
       );
     }
     await post.save();
-    res
-      .status(200)
-      .json({
-        message: "Post downvoted/undownvoted successfully!",
-        upvotes: post.upvotes.length,
-        downvotes: post.downvotes.length,
-      });
+    res.status(200).json({
+      message: "Post downvoted/undownvoted successfully!",
+      upvotes: post.upvotes.length,
+      downvotes: post.downvotes.length,
+    });
   } catch (err) {
     console.error("Error downvoting post:", err.message);
     res.status(500).json({ message: "Server error downvoting post." });

@@ -30,4 +30,11 @@ router.get("/:id", protect, async (req, res) => {
   }
 });
 
+// 💡 NEW ROUTE: Get a specific user's submission for a challenge
+router.get(
+  "/:userId/submissions/:challengeId",
+  protect,
+  userController.getUserChallengeSubmission
+);
+
 module.exports = router;

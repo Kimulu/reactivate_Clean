@@ -4,10 +4,9 @@ interface ChallengeFile {
   code: string;
   active?: boolean;
   hidden?: boolean;
-  readOnly?: boolean; // Added for completeness if your Sandpack files can be read-only
+  readOnly?: boolean;
 }
 
-// 💡 MODIFIED: Challenge interface now includes 'testCode'
 export interface Challenge {
   _id: string;
   id: string;
@@ -15,79 +14,84 @@ export interface Challenge {
   difficulty: string;
   instructions: string;
   files: { [key: string]: ChallengeFile };
-  testCode: string; // 💡 NEW FIELD: Challenge test code from backend
+  testCode: string;
   points: number;
   createdAt?: string;
   updatedAt?: string;
   __v?: number;
 }
 
-// 💡 NEW INTERFACE: For individual test results from your backend
 export interface TestResult {
   title: string;
   status: "passed" | "failed" | "skipped";
-  message?: string; // Optional: detailed error message for failed tests
+  message?: string;
 }
 
-// 💡 NEW INTERFACE: For the overall test run response from the backend
 export interface CustomTestRunResponse {
-  passed: boolean; // Overall pass/fail status
-  output: string; // Raw console output from Jest
-  detailedResults: TestResult[]; // Structured array of individual test results
+  passed: boolean;
+  output: string;
+  detailedResults: TestResult[];
 }
 
-// 💡 NEW INTERFACE: To explicitly define the user info structure from backend auth (including totalPoints)
 export interface UserInfo {
   id: string;
   username: string;
   email: string;
-  totalPoints: number; // 💡 NEW FIELD: User's total points
+  totalPoints: number;
+  createdAt: string | null;
 }
 
-// 💡 NEW INTERFACE: For the data returned by getCompletedChallenges
 export interface CompletedChallengeInfo {
   challengeId: string;
-  pointsEarned: number; // 💡 NEW FIELD: Points earned for this specific challenge
+  pointsEarned: number;
 }
 
-// 💡 NEW INTERFACE: For a single entry on the leaderboard
 export interface LeaderboardEntry {
   username: string;
   totalPoints: number;
 }
-// 💡 NEW INTERFACE: For a Comment on a Community Post
+
 export interface CommunityComment {
   _id: string;
-  user: string; // User ID
-  username: string; // Denormalized username
+  user: string;
+  username: string;
   text: string;
   createdAt: string;
 }
 
-// 💡 NEW INTERFACE: For a Community Post (Solution or Discussion)
+// 💡 MODIFIED INTERFACE: For CommunityPost, 'user' is now a populated object, not just an ID string
 export interface CommunityPost {
   _id: string;
   user: {
+    // 💡 MODIFIED: User is now a populated object
     _id: string;
     username: string;
     totalPoints: number;
-  }; // Populated user info
+    // Add other user fields if you fetch them, like email, createdAt if needed here
+  };
   challenge?: {
     _id: string;
     id: string;
     title: string;
-  }; // Optional: Populated challenge info if it's a solution
+  };
   challengeId?: string;
   title: string;
-  codeContent?: { [path: string]: string }; // For solution posts
-  body?: string; // For discussion posts or solution descriptions
+  codeContent?: { [path: string]: string };
+  body?: string;
   type: "solution" | "discussion";
   tags?: string[];
   comments: CommunityComment[];
-  upvotes: string[]; // Array of user IDs
-  downvotes: string[]; // Array of user IDs
+  upvotes: string[];
+  downvotes: string[];
   createdAt: string;
   updatedAt: string;
+  voteScore?: number; // 💡 NEW: Include voteScore from backend aggregate
+}
+
+export interface UserSubmissionDetails {
+  submittedCode: { [path: string]: string };
+  submittedAt: string;
+  pointsEarned: number;
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL as string;
@@ -106,10 +110,7 @@ const getToken = () => {
 const authFetch = async (url: string, options: RequestInit = {}) => {
   const token = getToken();
   if (!token) {
-    // Redirect to login or show an error if no token is found for an auth-protected route
-    // In a real app, you might want a more sophisticated redirect or global error handling
     console.error("Authentication token missing for protected route:", url);
-    // As a simple example, we'll throw, but consider a redirect here.
     throw new Error("Authentication required.");
   }
 
@@ -225,7 +226,6 @@ export const apiClient = {
     return res.json();
   },
 
-  // 💡 NEW FUNCTION: To call your backend's custom test runner
   runUserTests: async (
     challengeId: string,
     userSolutionFiles: { [path: string]: string } // An object like { 'index.js': 'user code' }
@@ -238,17 +238,16 @@ export const apiClient = {
   },
 
   getLeaderboard: async (): Promise<LeaderboardEntry[]> => {
-    console.log("apiClient: Attempting to fetch leaderboard with token."); // 💡 NEW LOG
-    const res = await authFetch(`/api/users/leaderboard`, {
-      // 💡 CRITICAL CHANGE: Use authFetch
+    console.log("apiClient: Attempting to fetch leaderboard with token.");
+    // 💡 MODIFIED: Reverted to plain fetch for public leaderboard (if backend route is public)
+    const res = await fetch(`${BASE_URL}/api/users/leaderboard`, {
       method: "GET",
-      // authFetch already sets Content-Type and Authorization header
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
 
-    // We keep the error handling consistent with other authFetch calls
-    // The error will now likely be from the backend if token is invalid/expired etc.
     if (!res.ok) {
-      // This check is technically redundant as authFetch throws on !res.ok, but kept for clarity/safety.
       const errorData = await res.json().catch(() => null);
       console.error("apiClient: Leaderboard fetch error data:", errorData);
       throw new Error(errorData?.message || "Failed to fetch leaderboard");
@@ -256,10 +255,9 @@ export const apiClient = {
 
     return res.json();
   },
-
   createCommunityPost: async (postData: {
-    challenge?: string;
-    challengeId?: string;
+    challenge?: string; // Challenge MongoDB _id
+    challengeId?: string; // Challenge custom ID
     title: string;
     codeContent?: { [path: string]: string };
     body?: string;
@@ -273,31 +271,20 @@ export const apiClient = {
     return res.json();
   },
 
-  // 💡 FIX: Use authFetch for getCommunityPosts
   getCommunityPosts: async (): Promise<CommunityPost[]> => {
-    console.log("apiClient: Attempting to fetch community posts with token."); // 💡 NEW LOG
     const res = await authFetch(`/api/community/posts`, {
-      // 💡 CRITICAL CHANGE: Use authFetch
       method: "GET",
-      // authFetch handles headers
     });
     return res.json();
   },
 
-  // 💡 FIX: Use authFetch for getCommunityPostById
   getCommunityPostById: async (postId: string): Promise<CommunityPost> => {
-    console.log(
-      `apiClient: Attempting to fetch community post ${postId} with token.`
-    ); // 💡 NEW LOG
     const res = await authFetch(`/api/community/posts/${postId}`, {
-      // 💡 CRITICAL CHANGE: Use authFetch
       method: "GET",
-      // authFetch handles headers
     });
     return res.json();
   },
 
-  // 💡 NEW: Add a comment to a community post
   addCommunityComment: async (
     postId: string,
     text: string
@@ -309,23 +296,42 @@ export const apiClient = {
     return res.json();
   },
 
-  // 💡 NEW (Optional): Upvote a post
   upvoteCommunityPost: async (
     postId: string
   ): Promise<{ message: string; upvotes: number; downvotes: number }> => {
+    // 💡 MODIFIED: Removed postCreatorTotalPoints
     const res = await authFetch(`/api/community/posts/${postId}/upvote`, {
       method: "POST",
     });
     return res.json();
   },
 
-  // 💡 NEW (Optional): Downvote a post
   downvoteCommunityPost: async (
     postId: string
   ): Promise<{ message: string; upvotes: number; downvotes: number }> => {
+    // 💡 MODIFIED: Removed postCreatorTotalPoints
     const res = await authFetch(`/api/community/posts/${postId}/downvote`, {
       method: "POST",
     });
+    return res.json();
+  },
+  getUserChallengeSubmission: async (
+    userId: string,
+    challengeId: string
+  ): Promise<UserSubmissionDetails> => {
+    const res = await authFetch(
+      `/api/users/${userId}/submissions/${challengeId}`,
+      {
+        method: "GET",
+      }
+    );
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(
+        errorData?.message ||
+          `Failed to fetch submission for challenge ${challengeId}.`
+      );
+    }
     return res.json();
   },
 };
