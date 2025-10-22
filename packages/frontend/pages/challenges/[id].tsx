@@ -402,6 +402,16 @@ export default function ChallengeDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const getCurrentUserId = () => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      if (!storedUser) return null;
+      const parsed = JSON.parse(storedUser);
+      return parsed.id || parsed._id || null;
+    } catch {
+      return null;
+    }
+  };
   useEffect(() => {
     const fetchIndividualChallenge = async () => {
       if (!id || typeof id !== "string") {
@@ -417,6 +427,33 @@ export default function ChallengeDetail() {
           id
         );
         setChallenge(fetchedChallenge);
+
+        // --- NEW: Fetch user submission and merge it ---
+        const userId = getCurrentUserId();
+        console.log("🔍 userId:", userId);
+
+        if (userId) {
+          console.log("📡 Fetching submission for", { userId, id });
+          try {
+            const submission = await apiClient.getUserChallengeSubmission(
+              userId,
+              id
+            );
+            console.log("🧩 Submission response:", submission);
+            if (submission && submission.submittedCode) {
+              const mergedFiles = { ...fetchedChallenge.files };
+              for (const path in submission.submittedCode) {
+                if (mergedFiles[path]) {
+                  mergedFiles[path].code = submission.submittedCode[path];
+                }
+              }
+              setChallenge({ ...fetchedChallenge, files: mergedFiles });
+              console.log("✅ Loaded user's previous submission");
+            }
+          } catch (err: any) {
+            console.warn("⚠️ Error fetching submission:", err);
+          }
+        }
       } catch (err: any) {
         console.error("Error fetching challenge details:", err);
         setError(err.message || "Failed to load challenge details.");

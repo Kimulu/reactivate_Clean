@@ -34,7 +34,19 @@ export default function LoginPage() {
             id: data.user.id,
             username: data.user.username,
             email: data.user.email,
-            totalPoints: data.user.totalPoints, // 💡 NEW: Include totalPoints from backend
+            totalPoints: data.user.totalPoints,
+            token: data.token,
+          })
+        );
+
+        // ✅ Add this
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            id: data.user.id,
+            username: data.user.username,
+            email: data.user.email,
+            totalPoints: data.user.totalPoints,
             token: data.token,
           })
         );
