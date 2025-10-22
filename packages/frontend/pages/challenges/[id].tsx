@@ -534,13 +534,8 @@ export default function ChallengeDetail() {
           ),
           activeFile: activeFile,
           initMode: "lazy",
-          showDevTools: false,
           autorun: true,
           autoReload: true,
-          testRunner: {
-            autorun: false,
-            showConsole: false,
-          },
         }}
       >
         {/* Wrap everything inside a vertical PanelGroup */}

@@ -359,4 +359,35 @@ export const apiClient = {
     }
     return res.json();
   },
+  // 💡 NEW: Update user profile details
+  updateUserProfile: async (
+    userId: string,
+    profileData: { username?: string; email?: string }
+  ): Promise<{ message: string; user: UserInfo }> => {
+    const res = await authFetch(`/api/users/${userId}/profile`, {
+      method: "PUT",
+      body: JSON.stringify(profileData),
+    });
+    return res.json();
+  },
+
+  // 💡 NEW: Update user password
+  updateUserPassword: async (
+    userId: string,
+    passwordData: { currentPassword: string; newPassword: string }
+  ): Promise<{ message: string }> => {
+    const res = await authFetch(`/api/users/${userId}/password`, {
+      method: "PUT",
+      body: JSON.stringify(passwordData),
+    });
+    return res.json();
+  },
+
+  // 💡 NEW: Delete user account
+  deleteUserAccount: async (userId: string): Promise<{ message: string }> => {
+    const res = await authFetch(`/api/users/${userId}`, {
+      method: "DELETE",
+    });
+    return res.json();
+  },
 };

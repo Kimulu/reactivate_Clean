@@ -43,4 +43,10 @@ router.get(
   protect,
   userController.getHighestChallengeScore
 );
+
+// 💡 NEW ROUTES: User Profile Updates
+router.put("/:userId/profile", protect, userController.updateProfile);
+router.put("/:userId/password", protect, userController.updatePassword);
+router.delete("/:userId", protect, userController.deleteAccount); // Delete account
+
 module.exports = router;
