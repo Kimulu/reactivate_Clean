@@ -28,7 +28,7 @@ export function Challenges() {
   ];
 
   return (
-    <section id="challenges" className="py-20 px-6 relative">
+    <section id="challenges" className="py-20 px-6 relative bg-black">
       <div className="max-w-7xl mx-auto">
         <motion.div
           className="text-center mb-16"

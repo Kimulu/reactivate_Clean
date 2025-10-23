@@ -8,9 +8,12 @@ import { Zap } from "lucide-react";
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-black dark">
+    <>
       <Navbar />
-      <Hero />
+      <main className="bg-black text-white min-h-[70vh]">
+        <Hero />
+      </main>
+
       <Challenges />
       <Features />
       <Stats />
@@ -47,6 +50,6 @@ export default function App() {
           </div>
         </div>
       </footer>
-    </div>
+    </>
   );
 }

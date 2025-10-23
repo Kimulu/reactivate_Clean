@@ -1,42 +1,59 @@
-import { motion } from "motion/react";
+"use client";
+
+import { motion } from "framer-motion"; // Using standard framer-motion
 import { Zap, Code } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+
+// Fix 2: Changed path alias to a relative import for ConnectParticles
+import ConnectParticles from "./ConnectParticles";
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
-      {/* Circuit Background Pattern */}
-      <div className="absolute inset-0 circuit-pattern"></div>
+    <>
+      {/* 1. PARTICLES: Positioned absolutely to cover the viewport, set to Z-index 0. */}
+      <ConnectParticles
+        id="hero-connect-particles"
+        style={{
+          position: "absolute",
+          width: "100%",
+          height: "100%",
+          top: 0,
+          left: 0,
+          zIndex: -1,
+        }}
+      />
 
-      {/* Animated Background Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0f0f23] via-[#1a1a2e] to-[#0f0f23] opacity-90"></div>
+      {/* 2. MAIN CONTENT SECTION: Set to min-h-screen and z-index 10 (high enough to be above the particles). */}
+      <section className="relative min-h-screen flex items-center justify-center z-10 overflow-hidden px-4 sm:px-6">
+        {/* 🎨 Layer 1: Gradient Overlay (Sits on top of particles, but below foreground content) */}
+        <div className="absolute inset-0  opacity-90 z-[1]"></div>
 
-      {/* Subtle Floating Elements - positioned to not interfere with text */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Top right accent */}
+        {/* 🎨 Layer 2: Circuit Pattern Overlay (Below the interactive elements) */}
+        <div className="absolute inset-0 circuit-pattern z-[2]"></div>
+
+        {/* ⚡ Layer 3: Floating Icons & Code Snippets (Z-index 3 or 4) */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-[3]">
+          <motion.div
+            className="absolute top-24 right-6 sm:right-16 text-[#06ffa5]/30 floating-animation"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+          >
+            <Zap className="w-10 h-10 sm:w-16 sm:h-16" />
+          </motion.div>
+
+          <motion.div
+            className="absolute bottom-24 left-6 sm:left-16 text-[#f72585]/25 floating-animation"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.8 }}
+          >
+            <Code className="w-8 h-8 sm:w-12 sm:h-12" />
+          </motion.div>
+        </div>
+
+        {/* 💻 Layer 4: Floating Code Snippets (Z-index 4) */}
         <motion.div
-          className="absolute top-32 right-16 text-[#06ffa5]/30 floating-animation"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-        >
-          <Zap className="w-16 h-16" />
-        </motion.div>
-
-        {/* Bottom left accent */}
-        <motion.div
-          className="absolute bottom-32 left-16 text-[#f72585]/20 floating-animation"
-          style={{ animationDelay: "3s" }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2 }}
-        >
-          <Code className="w-12 h-12" />
-        </motion.div>
-
-        {/* Subtle code snippet in corners */}
-        <motion.div
-          className="absolute top-40 left-8 bg-black/20 backdrop-blur-sm border border-[#4cc9f0]/20 rounded-lg p-3 font-mono text-xs text-[#4cc9f0]/40 floating-animation hidden lg:block"
+          className="absolute top-40 left-8 bg-black/20 backdrop-blur-sm border border-[#4cc9f0]/20 rounded-lg p-3 font-mono text-xs text-[#4cc9f0]/40 floating-animation hidden lg:block z-[4]"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 2.5, duration: 0.8 }}
@@ -45,23 +62,20 @@ export function Hero() {
         </motion.div>
 
         <motion.div
-          className="absolute bottom-40 right-8 bg-black/20 backdrop-blur-sm border border-[#06ffa5]/20 rounded-lg p-3 font-mono text-xs text-[#06ffa5]/40 floating-animation hidden lg:block"
+          className="absolute bottom-40 right-8 bg-black/20 backdrop-blur-sm border border-[#06ffa5]/20 rounded-lg p-3 font-mono text-xs text-[#06ffa5]/40 floating-animation hidden lg:block z-[4]"
           style={{ animationDelay: "4s" }}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 3, duration: 0.8 }}
         >
-          useEffect(() =&gt; {}, [])
+          useEffect(() =&gt; {`{}`}, [])
         </motion.div>
-      </div>
 
-      {/* Main Content */}
-      <div className="relative z-20 text-center max-w-6xl mx-auto px-6">
-        {/* Title with better backdrop */}
-        <div className="relative">
+        {/* 🧠 Layer 5: Main Content (Highest Z-index: 5) */}
+        <div className="relative z-[5] text-center max-w-4xl mx-auto">
+          {/* Title */}
           <motion.h1
-            className="text-6xl md:text-6xl lg:text-6xl font-bold mb-6 gradient-text relative z-10"
-            style={{ fontFamily: "JetBrains Mono, monospace" }}
+            className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 gradient-text font-mono leading-tight"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1 }}
@@ -69,62 +83,40 @@ export function Hero() {
             CODING CHALLENGES
           </motion.h1>
 
-          {/* Subtle glow backdrop for title */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#4cc9f0]/10 via-transparent to-[#06ffa5]/10 blur-3xl -z-10"></div>
+          <motion.h2
+            className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 gradient-text"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 1 }}
+          >
+            For React Developers
+          </motion.h2>
+
+          {/* Paragraph */}
+
+          {/* Buttons */}
+          <motion.div
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9, duration: 1 }}
+          >
+            {/* Fix 1: Replaced Link component with standard <a> tag */}
+            <a href="/Signup">
+              <button className="px-8 py-3 sm:py-4 sm:px-10 text-base sm:text-lg font-semibold border border-[#06ffa5] text-white/90 rounded-lg hover:bg-[#06ffa5] hover:text-black transition-colors duration-300 w-48 sm:w-auto">
+                Join Now
+              </button>
+            </a>
+
+            {/* Fix 1: Replaced Link component with standard <a> tag */}
+            <a href="/Login">
+              <button className="px-8 py-3 sm:py-4 sm:px-10 text-base sm:text-lg font-semibold border border-[#4cc9f0] text-white/90 rounded-lg hover:bg-[#4cc9f0] hover:text-black transition-colors duration-300 w-48 sm:w-auto">
+                Explore Challenges
+              </button>
+            </a>
+          </motion.div>
         </div>
-
-        <motion.h2
-          className="text-2xl md:text-4xl lg:text-4xl font-bold mb-8 gradient-text"
-          style={{ fontFamily: "JetBrains Mono, monospace" }}
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 1 }}
-        >
-          For React Developers
-        </motion.h2>
-
-        <motion.p
-          className="text-[16px] md:text-xl lg:text-[16px] text-white/90 mb-12 max-w-xl mx-auto leading-relaxed bg-black/10 backdrop-blur-sm rounded-lg p-6 border border-white/5"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 1 }}
-        >
-          Learn React by doing{" "}
-          <span className="text-[#4cc9f0] font-semibold">
-            interactive challenges
-          </span>
-          , master{" "}
-          <span className="text-[#06ffa5] font-semibold">modern patterns</span>,
-          and build
-          <span className="text-[#f72585] font-semibold">
-            {" "}
-            production-ready skills
-          </span>{" "}
-          with our hands-on coding platform.
-        </motion.p>
-
-        <motion.div
-          className="flex flex-col sm:flex-row gap-6 justify-center items-center"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9, duration: 1 }}
-        >
-          <Button
-            size="lg"
-            className="px-8 py-4 text-lg font-semibold bg-gradient-to-r from-[#06ffa5] to-[#4cc9f0] hover:from-[#4cc9f0] hover:to-[#06ffa5] text-black transition-all duration-300 neon-glow"
-          >
-            Start Coding Now
-          </Button>
-
-          <Button
-            variant="outline"
-            size="lg"
-            className="px-8 py-4 text-lg font-semibold border-2 border-[#f72585] text-[#f72585] hover:bg-[#f72585] hover:text-white transition-all duration-300 neon-border bg-black/20 backdrop-blur-sm"
-          >
-            View Challenges
-          </Button>
-        </motion.div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
