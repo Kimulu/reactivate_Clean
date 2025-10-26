@@ -62,7 +62,7 @@ export function Hero() {
         </motion.div>
 
         <motion.div
-          className="absolute bottom-40 right-8 bg-black/20 backdrop-blur-sm border border-[#06ffa5]/20 rounded-lg p-3 font-mono text-xs text-[#06ffa5]/40 floating-animation hidden lg:block z-[4]"
+          className="absolute bottom-40 right-8 bg-black/20 backdrop-blur-sm border border-[#06ffa5]/20 rounded-lg p-3 text-xs text-[#06ffa5]/40 floating-animation hidden lg:block z-[4]"
           style={{ animationDelay: "4s" }}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -75,7 +75,7 @@ export function Hero() {
         <div className="relative z-[5] text-center max-w-4xl mx-auto">
           {/* Title */}
           <motion.h1
-            className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 gradient-text font-mono leading-tight"
+            className="text-4xl sm:text-5xl md:text-6xl font-oswald mb-4 gradient-text leading-tight"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1 }}
@@ -84,7 +84,7 @@ export function Hero() {
           </motion.h1>
 
           <motion.h2
-            className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 gradient-text"
+            className="text-xl sm:text-2xl md:text-3xl font-oswald mb-6 gradient-text"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 1 }}
@@ -103,14 +103,14 @@ export function Hero() {
           >
             {/* Fix 1: Replaced Link component with standard <a> tag */}
             <a href="/Signup">
-              <button className="px-8 py-3 sm:py-4 sm:px-10 text-base sm:text-lg font-semibold border border-[#06ffa5] text-white/90 rounded-lg hover:bg-[#06ffa5] hover:text-black transition-colors duration-300 w-48 sm:w-auto">
+              <button className="font-saira px-8 py-3 sm:py-4 sm:px-10 text-base sm:text-lg font-semibold border border-[#06ffa5] text-white/90 rounded-lg hover:bg-[#06ffa5] hover:text-black transition-colors duration-300 w-48 sm:w-auto">
                 Join Now
               </button>
             </a>
 
             {/* Fix 1: Replaced Link component with standard <a> tag */}
             <a href="/Login">
-              <button className="px-8 py-3 sm:py-4 sm:px-10 text-base sm:text-lg font-semibold border border-[#4cc9f0] text-white/90 rounded-lg hover:bg-[#4cc9f0] hover:text-black transition-colors duration-300 w-48 sm:w-auto">
+              <button className=" font-saira px-8 py-3 sm:py-4 sm:px-10 text-base sm:text-lg font-semibold border border-[#4cc9f0] text-white/90 rounded-lg hover:bg-[#4cc9f0] hover:text-black transition-colors duration-300 w-48 sm:w-auto">
                 Explore Challenges
               </button>
             </a>

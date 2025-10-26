@@ -34,7 +34,7 @@ const ConnectParticles: React.FC<ConnectParticlesProps> = (props) => {
           },
           onHover: {
             enable: true,
-            mode: "connect", // Key interaction mode
+            mode: ["connect", "repulse"], // Key interaction mode
             parallax: {
               enable: false,
               force: 2,
@@ -65,14 +65,14 @@ const ConnectParticles: React.FC<ConnectParticlesProps> = (props) => {
           push: {
             default: true,
             groups: [],
-            quantity: 4,
+            quantity: 1,
           },
           repulse: {
-            distance: 200,
+            distance: 120,
             duration: 0.4,
             factor: 100,
             speed: 1,
-            maxSpeed: 50,
+            maxSpeed: 30,
             easing: "ease-out-quad",
           },
         },
@@ -112,7 +112,7 @@ const ConnectParticles: React.FC<ConnectParticlesProps> = (props) => {
         links: {
           enable: true,
           distance: 150,
-          opacity: 0.2, // Subtler links
+          opacity: 0.05, // Subtler links
           width: 1,
           color: {
             value: "#ffffff",

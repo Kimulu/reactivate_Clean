@@ -20,11 +20,11 @@ export default function App() {
       <Community />
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-white/10">
+      <footer className="py-12 px-6 border-t bg-black border-white/10 z-10 relative">
         <div className="max-w-7xl mx-auto text-center">
           <div className="flex items-center justify-center space-x-3 mb-4">
             <Zap className="w-8 h-8 text-[#06ffa5]" />
-            <span className="text-xl font-bold gradient-text font-mono">
+            <span className="text-2xl font-chicle gradient-text font-mono">
               Reactivate
             </span>
           </div>

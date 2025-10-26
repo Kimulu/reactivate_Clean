@@ -36,7 +36,7 @@ export function Community() {
   ];
 
   return (
-    <section id="community" className="py-20 px-6 relative">
+    <section id="community" className="py-20 px-6 relative bg-black">
       <div className="max-w-7xl mx-auto">
         <motion.div
           className="text-center mb-16"
@@ -45,10 +45,10 @@ export function Community() {
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-4xl md:text-6xl font-bold gradient-text mb-6">
+          <h2 className="text-4xl md:text-6xl font-oswald gradient-text mb-6">
             Join the Community
           </h2>
-          <p className="text-xl text-white/70 max-w-2xl mx-auto">
+          <p className="text-xl text-white/70 max-w-2xl mx-auto font-saira">
             Connect with developers worldwide and accelerate your React journey
           </p>
         </motion.div>
@@ -80,10 +80,10 @@ export function Community() {
                       />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-[#4cc9f0] transition-colors">
+                      <h3 className="text-xl font-bold font-saira text-white mb-2 group-hover:text-[#4cc9f0] transition-colors">
                         {feature.title}
                       </h3>
-                      <p className="text-white/70 leading-relaxed">
+                      <p className="text-white/70 leading-relaxed font-saira">
                         {feature.description}
                       </p>
                     </div>

@@ -73,13 +73,13 @@ export function Features() {
 }`;
 
   return (
-    <section id="features" className="py-20 px-6 relative">
+    <section id="features" className="py-20 px-6 relative bg-black">
       <div className="max-w-7xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-16 items-stretch">
           {/* Features List */}
           <div className="flex flex-col justify-center">
             <motion.h2
-              className="text-4xl md:text-5xl font-bold gradient-text mb-8"
+              className="text-4xl md:text-5xl  font-oswald gradient-text mb-8"
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
@@ -102,10 +102,10 @@ export function Features() {
                     <feature.icon className="w-6 h-6 text-[#4cc9f0]" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-white mb-2">
+                    <h3 className="text-xl font-bold font-saira text-white mb-2">
                       {feature.title}
                     </h3>
-                    <p className="text-white/70 leading-relaxed">
+                    <p className="text-white/70 leading-relaxed font-saira">
                       {feature.description}
                     </p>
                   </div>

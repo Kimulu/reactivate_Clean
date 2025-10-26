@@ -14,9 +14,7 @@ export function Navbar() {
         {/* Logo */}
         <div className="flex items-center space-x-3">
           <Zap className="w-7 h-7 text-[#06ffa5]" />
-          <h1 className="text-xl font-bold gradient-text font-mono">
-            Reactivate
-          </h1>
+          <h1 className="text-xl gradient-text font-chicle">Reactivate</h1>
         </div>
 
         {/* Desktop Navigation */}
@@ -25,7 +23,7 @@ export function Navbar() {
             <a
               key={item}
               href={`#${item.toLowerCase()}`}
-              className="text-white/90 hover:text-[#4cc9f0] transition-colors duration-300 font-medium"
+              className="text-white/90 hover:text-[#4cc9f0] transition-colors duration-300 font-saira"
             >
               {item}
             </a>
@@ -35,12 +33,12 @@ export function Navbar() {
         {/* Desktop Auth Buttons */}
         <div className="hidden md:flex items-center space-x-4">
           <Link href="/Login">
-            <button className="px-4 py-2 border border-[#4cc9f0] text-white/90 font-medium rounded-lg hover:bg-[#4cc9f0] hover:text-black transition-colors duration-300">
+            <button className="px-4 py-2 border border-[#4cc9f0] text-white/90 font-saira rounded-lg hover:bg-[#4cc9f0] hover:text-black transition-colors duration-300">
               Login
             </button>
           </Link>
           <Link href="/Signup">
-            <button className="px-4 py-2 border border-[#06ffa5] text-white/90 font-medium rounded-lg hover:bg-[#06ffa5] hover:text-black transition-colors duration-300">
+            <button className="px-4 py-2 border border-[#06ffa5] text-white/90 font-saira rounded-lg hover:bg-[#06ffa5] hover:text-black transition-colors duration-300">
               Join
             </button>
           </Link>
@@ -87,12 +85,12 @@ export function Navbar() {
               </button>
 
               <Link href="/Login" onClick={() => setIsOpen(false)}>
-                <button className="w-40 py-3 border border-[#4cc9f0] text-white/90 font-medium rounded-lg hover:bg-[#4cc9f0] hover:text-black transition-colors duration-300">
+                <button className="w-40 py-3 border border-[#4cc9f0] text-white/90 font-saira rounded-lg hover:bg-[#4cc9f0] hover:text-black transition-colors duration-300">
                   Login
                 </button>
               </Link>
               <Link href="/Signup" onClick={() => setIsOpen(false)}>
-                <button className="w-40 py-3 border border-[#06ffa5] text-white/90 font-medium rounded-lg hover:bg-[#06ffa5] hover:text-black transition-colors duration-300">
+                <button className="w-40 py-3 border border-[#06ffa5] text-white/90 font-saira rounded-lg hover:bg-[#06ffa5] hover:text-black transition-colors duration-300">
                   Join
                 </button>
               </Link>

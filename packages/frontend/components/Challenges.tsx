@@ -37,10 +37,10 @@ export function Challenges() {
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-4xl md:text-6xl font-bold gradient-text mb-6">
+          <h2 className="text-4xl sm:text-4xl md:text-6xl font-oswald gradient-text py-2 mb-4">
             Challenge Categories
           </h2>
-          <p className="text-xl text-white/70 max-w-2xl mx-auto">
+          <p className="text-xl text-white/70 max-w-2xl mx-auto font-saira mt-">
             Dive into hands-on challenges designed to level up your React skills
           </p>
         </motion.div>
@@ -77,7 +77,7 @@ export function Challenges() {
                         style={{ color: challenge.color }}
                       />
                     </div>
-                    <h3 className="text-xl font-bold text-white">
+                    <h3 className="text-xl  font-saira text-white">
                       {challenge.title}
                     </h3>
                   </div>
@@ -88,12 +88,12 @@ export function Challenges() {
                     </pre>
                   </div>
 
-                  <p className="text-white/70 leading-relaxed">
+                  <p className="text-white/70 leading-relaxed font-saira">
                     {challenge.description}
                   </p>
 
                   <button
-                    className="mt-6 px-6 py-3 rounded-lg font-semibold transition-all duration-300 w-full"
+                    className="mt-6 px-6 py-3 rounded-lg font-semibold font-saira transition-all duration-300 w-full"
                     style={{
                       background: `linear-gradient(45deg, ${challenge.color}20, ${challenge.color}40)`,
                       border: `1px solid ${challenge.color}60`,

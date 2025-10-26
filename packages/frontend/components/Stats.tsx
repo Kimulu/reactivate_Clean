@@ -34,7 +34,7 @@ export function Stats() {
   ];
 
   return (
-    <section className="py-20 px-6 relative">
+    <section className="py-20 px-6 relative bg-black">
       <div className="max-w-7xl mx-auto">
         <motion.div
           className="text-center mb-16"
@@ -43,10 +43,10 @@ export function Stats() {
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold gradient-text mb-6">
+          <h2 className="text-4xl md:text-5xl  font-oswald gradient-text mb-6 py-4">
             Trusted by Developers
           </h2>
-          <p className="text-xl text-white/70 max-w-2xl mx-auto">
+          <p className="text-xl text-white/70 max-w-2xl mx-auto font-saira">
             Join thousands of developers who are advancing their React skills
           </p>
         </motion.div>
@@ -90,17 +90,19 @@ export function Stats() {
                   </div>
 
                   <div
-                    className="text-3xl md:text-4xl font-bold mb-2 font-mono"
+                    className="text-3xl md:text-4xl font-bold font-saira mb-2 font-mono"
                     style={{ color: stat.color }}
                   >
                     {stat.number}
                   </div>
 
-                  <h3 className="text-lg font-semibold text-white mb-2">
+                  <h3 className="text-lg font-semibold text-white mb-2 font-saira">
                     {stat.label}
                   </h3>
 
-                  <p className="text-sm text-white/60">{stat.description}</p>
+                  <p className="text-sm text-white/60 font-saira">
+                    {stat.description}
+                  </p>
                 </div>
               </div>
             </motion.div>
