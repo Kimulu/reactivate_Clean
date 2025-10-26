@@ -193,6 +193,7 @@
     p {
       font-size: var(--font-heading);
       font-weight: var(--font-weight-normal);
+      font-family: var(--font-saira);
       line-height: 1.5;
     }
 

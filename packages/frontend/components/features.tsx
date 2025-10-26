@@ -73,13 +73,13 @@ export function Features() {
 }`;
 
   return (
-    <section id="features" className="py-20 px-6 relative bg-black">
+    <section id="features" className="py-16 px-4 sm:px-6 bg-black relative">
       <div className="max-w-7xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-16 items-stretch">
-          {/* Features List */}
-          <div className="flex flex-col justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-stretch">
+          {/* Left Side - Features List */}
+          <div className="flex flex-col justify-center order-1 lg:order-2">
             <motion.h2
-              className="text-4xl md:text-5xl  font-oswald gradient-text mb-8"
+              className="text-3xl sm:text-4xl md:text-5xl font-oswald gradient-text mb-8 text-center lg:text-left"
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
@@ -92,20 +92,20 @@ export function Features() {
               {features.map((feature, index) => (
                 <motion.div
                   key={feature.title}
-                  className="flex items-start space-x-4"
+                  className="flex items-start space-x-4 sm:space-x-5"
                   initial={{ opacity: 0, x: -30 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.2, duration: 0.8 }}
                   viewport={{ once: true }}
                 >
-                  <div className="flex-shrink-0 p-3 bg-gradient-to-br from-[#4cc9f0]/20 to-[#06ffa5]/20 rounded-lg border border-[#4cc9f0]/30">
-                    <feature.icon className="w-6 h-6 text-[#4cc9f0]" />
+                  <div className="flex-shrink-0 p-3 sm:p-4 bg-gradient-to-br from-[#4cc9f0]/20 to-[#06ffa5]/20 rounded-lg border border-[#4cc9f0]/30">
+                    <feature.icon className="w-5 h-5 sm:w-6 sm:h-6 text-[#4cc9f0]" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold font-saira text-white mb-2">
+                    <h3 className="text-lg sm:text-xl font-bold font-saira text-white mb-1 sm:mb-2">
                       {feature.title}
                     </h3>
-                    <p className="text-white/70 leading-relaxed font-saira">
+                    <p className="text-white/70 text-sm sm:text-base leading-relaxed font-saira">
                       {feature.description}
                     </p>
                   </div>
@@ -114,35 +114,35 @@ export function Features() {
             </div>
           </div>
 
-          {/* Code Editor Mockup */}
+          {/* Right Side - Code Editor */}
           <motion.div
-            className="relative flex flex-col h-full"
+            className="relative flex flex-col h-full order-1 lg:order-2"
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <div className="bg-black/60 backdrop-blur-sm rounded-xl border border-[#4cc9f0]/30 overflow-hidden neon-glow flex flex-col h-[450px]">
+            <div className="bg-black/60 backdrop-blur-sm rounded-xl border border-[#4cc9f0]/30 overflow-hidden neon-glow flex flex-col h-[400px] sm:h-[450px]">
               {/* Editor Header */}
-              <div className="flex items-center justify-between p-4 bg-black/40 border-b border-white/10">
-                <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center justify-between p-3 sm:p-4 bg-black/40 border-b border-white/10">
+                <div className="flex items-center space-x-3 sm:space-x-4 mb-2 sm:mb-0">
                   <div className="flex space-x-2">
-                    <div className="w-3 h-3 bg-[#f72585] rounded-full"></div>
-                    <div className="w-3 h-3 bg-[#ffb700] rounded-full"></div>
-                    <div className="w-3 h-3 bg-[#06ffa5] rounded-full"></div>
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#f72585] rounded-full"></div>
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#ffb700] rounded-full"></div>
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#06ffa5] rounded-full"></div>
                   </div>
-                  <span className="text-white/60 text-sm ml-4 font-mono">
+                  <span className="text-white/60 text-xs sm:text-sm font-mono">
                     TodoApp.jsx
                   </span>
                 </div>
-                <button className="flex items-center space-x-2 px-3 py-1 bg-[#06ffa5]/20 text-[#06ffa5] rounded-md border border-[#06ffa5]/30 hover:bg-[#06ffa5]/30 transition-colors">
-                  <Play className="w-4 h-4" />
-                  <span className="text-sm font-medium">Run</span>
+                <button className="flex items-center space-x-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-[#06ffa5]/20 text-[#06ffa5] rounded-md border border-[#06ffa5]/30 hover:bg-[#06ffa5]/30 transition-colors text-xs sm:text-sm">
+                  <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="font-medium">Run</span>
                 </button>
               </div>
 
               {/* Code Content */}
-              <div className="p-6 font-mono text-sm leading-relaxed overflow-y-auto flex-1">
+              <div className="p-4 sm:p-6 font-mono text-xs sm:text-sm leading-relaxed overflow-y-auto flex-1">
                 <pre className="text-white/90">
                   <code
                     dangerouslySetInnerHTML={{
@@ -170,9 +170,9 @@ export function Features() {
             </div>
 
             {/* Floating accent elements */}
-            <div className="absolute -top-4 -right-4 w-8 h-8 bg-[#f72585] rounded-full blur-sm opacity-60 floating-animation"></div>
+            <div className="absolute -top-3 -right-3 w-6 h-6 sm:w-8 sm:h-8 bg-[#f72585] rounded-full blur-sm opacity-60 floating-animation"></div>
             <div
-              className="absolute -bottom-4 -left-4 w-6 h-6 bg-[#06ffa5] rounded-full blur-sm opacity-60 floating-animation"
+              className="absolute -bottom-3 -left-3 w-5 h-5 sm:w-6 sm:h-6 bg-[#06ffa5] rounded-full blur-sm opacity-60 floating-animation"
               style={{ animationDelay: "1s" }}
             ></div>
           </motion.div>

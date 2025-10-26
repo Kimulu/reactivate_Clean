@@ -1,14 +1,14 @@
+"use client";
+
 import { motion } from "motion/react";
 import {
   MessageCircle,
   BookOpen,
   Award,
-  Mail,
-  User,
   ArrowRight,
+  UserCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 
 export function Community() {
   const communityFeatures = [
@@ -26,18 +26,12 @@ export function Community() {
         "Access exclusive tutorials, documentation, and best practices guides",
       color: "#06ffa5",
     },
-    {
-      icon: Award,
-      title: "Certification",
-      description:
-        "Earn verified certificates upon completing challenge tracks and skill assessments",
-      color: "#f72585",
-    },
   ];
 
   return (
     <section id="community" className="py-20 px-6 relative bg-black">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <motion.div
           className="text-center mb-16"
           initial={{ opacity: 0, y: 30 }}
@@ -54,7 +48,7 @@ export function Community() {
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-16 items-start">
-          {/* Community Features */}
+          {/* Left: Community Features */}
           <div className="space-y-8">
             {communityFeatures.map((feature, index) => (
               <motion.div
@@ -94,67 +88,59 @@ export function Community() {
             ))}
           </div>
 
-          {/* Signup Form */}
+          {/* Right: Login / Signup */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
+            className="relative"
           >
-            <div className="bg-black/60 backdrop-blur-sm rounded-xl p-8 border border-[#4cc9f0]/30 neon-glow">
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-white mb-2">
-                  Start Your Journey
-                </h3>
-                <p className="text-white/70">
-                  Sign up to access challenges and join our community
-                </p>
-              </div>
+            <div className="bg-black/60 backdrop-blur-sm rounded-xl p-8 border border-[#4cc9f0]/30 neon-glow text-center">
+              {/* Animated user icon */}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 1 }}
+                transition={{
+                  duration: 0.6,
+                  ease: "easeOut",
+                }}
+                viewport={{ once: true }}
+                className="flex justify-center mb-6"
+              >
+                <UserCircle2 className="w-20 h-20 text-[#06ffa5] drop-shadow-[0_0_12px_#06ffa5aa]" />
+              </motion.div>
 
-              <form className="space-y-6">
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
-                  <Input
-                    type="text"
-                    placeholder="Username"
-                    className="pl-12 bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-[#4cc9f0] focus:ring-[#4cc9f0]/20"
-                  />
-                </div>
+              <h3 className="text-2xl font-bold text-white mb-2 font-saira">
+                Start Your Journey
+              </h3>
+              <p className="text-white/70 mb-8 font-saira">
+                Sign up or log in to access challenges and connect with our
+                community.
+              </p>
 
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
-                  <Input
-                    type="email"
-                    placeholder="Email address"
-                    className="pl-12 bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-[#4cc9f0] focus:ring-[#4cc9f0]/20"
-                  />
-                </div>
+              {/* Buttons */}
+              <div className="flex flex-col sm:flex-row justify-center gap-4">
+                <Button
+                  asChild
+                  className="w-full sm:w-40 py-3 bg-gradient-to-r from-[#4cc9f0] to-[#06ffa5] hover:from-[#06ffa5] hover:to-[#4cc9f0] text-black font-semibold transition-all duration-300 rounded-xl"
+                >
+                  <a href="/login">Login</a>
+                </Button>
 
                 <Button
-                  className="w-full py-3 bg-gradient-to-r from-[#06ffa5] to-[#4cc9f0] hover:from-[#4cc9f0] hover:to-[#06ffa5] text-black font-semibold transition-all duration-300 neon-glow"
-                  size="lg"
+                  asChild
+                  className="w-full sm:w-40 py-3 bg-gradient-to-r from-[#f72585] to-[#ff7bca] hover:from-[#ff7bca] hover:to-[#f72585] text-white font-semibold transition-all duration-300 rounded-xl"
                 >
-                  Join ReactChallenges
+                  <a href="/signup">Sign Up</a>
                 </Button>
-              </form>
-
-              <div className="mt-6 pt-6 border-t border-white/10 text-center">
-                <p className="text-sm text-white/60">
-                  Already have an account?{" "}
-                  <a
-                    href="#"
-                    className="text-[#4cc9f0] hover:text-[#06ffa5] transition-colors font-medium"
-                  >
-                    Sign in here
-                  </a>
-                </p>
               </div>
             </div>
 
-            {/* Floating accent elements */}
-            <div className="absolute -top-4 -right-4 w-8 h-8 bg-[#06ffa5] rounded-full blur-sm opacity-40 floating-animation"></div>
+            {/* Floating accent orbs */}
+            <div className="absolute -top-4 -right-4 w-8 h-8 bg-[#06ffa5] rounded-full blur-md opacity-40 floating-animation"></div>
             <div
-              className="absolute -bottom-6 -left-6 w-6 h-6 bg-[#f72585] rounded-full blur-sm opacity-40 floating-animation"
+              className="absolute -bottom-6 -left-6 w-6 h-6 bg-[#f72585] rounded-full blur-md opacity-40 floating-animation"
               style={{ animationDelay: "2s" }}
             ></div>
           </motion.div>
