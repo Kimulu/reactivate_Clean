@@ -92,5 +92,5 @@ Reactivate was created to make React learning interactive, fun, and community-dr
 If you’re deploying this on GitHub Pages or Vercel, and the image doesn’t render correctly, you can change the path to a relative public URL like:
 
 ```markdown
-![Reactivate Screenshot](/frontend/images/projectimage.JPG)
+![alt text](https://github.com/Kimulu/reactivate_Clean/blob/packages/frontend/public/projectimage.JPG?raw=true)
 ```
