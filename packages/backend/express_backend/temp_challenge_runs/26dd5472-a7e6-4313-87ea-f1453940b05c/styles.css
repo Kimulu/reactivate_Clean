@@ -1,0 +1,13 @@
+body {
+  font-family: sans-serif;
+  background-color: #0f172a;
+  color: white;
+  padding: 2rem;
+}
+
+h1 {
+  color: #38bdf8; /* Tailwind cyan-400 */
+}
+
+p {
+  color: #cbd5e1; /* Tailwind slate-300 */}

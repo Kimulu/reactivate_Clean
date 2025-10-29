@@ -3,12 +3,7 @@
 import { Sidebar } from "@/components/Sidebar";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useEffect, useState } from "react";
-import {
-  apiClient,
-  CommunityPost,
-  Challenge,
-  CompletedChallengeInfo,
-} from "@/utils/apiClient";
+import { apiClient, CommunityPost } from "@/utils/apiClient";
 import toast from "react-hot-toast";
 import {
   Loader2,
@@ -18,7 +13,7 @@ import {
   Plus,
   ThumbsUp,
   ThumbsDown,
-} from "lucide-react"; // 💡 NEW: ThumbsUp/Down icons
+} from "lucide-react";
 import { CreatePostModal } from "@/components/CreatePostModal";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
@@ -28,8 +23,6 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
-  // 💡 NEW: Access current user to highlight their posts (optional) or check vote status
   const currentUser = useSelector((state: RootState) => state.user);
 
   const fetchPosts = async () => {
@@ -37,11 +30,11 @@ export default function CommunityPage() {
       setLoading(true);
       setError(null);
       const data: CommunityPost[] = await apiClient.getCommunityPosts();
-      setPosts(data); // Data is already sorted by voteScore from backend
+      setPosts(data);
     } catch (err: any) {
       console.error("Error fetching community posts:", err);
-      setError(err.message || "Failed to load community posts.");
-      toast.error(err.message || "Failed to load community posts.");
+      setError(err.message || "Failed to load posts.");
+      toast.error(err.message || "Failed to load posts.");
     } finally {
       setLoading(false);
     }
@@ -49,7 +42,7 @@ export default function CommunityPage() {
 
   useEffect(() => {
     fetchPosts();
-  }, [currentUser.id]); // 💡 MODIFIED: Re-fetch if currentUser.id changes (e.g., login/logout)
+  }, [currentUser.id]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString(undefined, {
@@ -66,37 +59,41 @@ export default function CommunityPage() {
       <div className="min-h-screen bg-gradient-to-br from-[#0f0f23] via-[#1a1a2e] to-[#0f0f23]">
         <Sidebar />
 
-        <div className="ml-64 p-8 text-white">
-          <div className="flex justify-between items-center mb-8 border-b pb-4 border-white/10">
-            <h1 className="text-4xl font-extrabold font-mono text-[#06ffa5]">
+        {/* ✅ CORRECTED MAIN CONTENT WRAPPER */}
+        <div className="p-4 pt-24 text-white md:ml-64 md:p-8 md:pt-8">
+          {/* ✅ RESPONSIVE HEADER */}
+          <div className="mb-8 flex flex-col items-start gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-3xl font-saira text-[#06ffa5] sm:text-4xl">
               Community Hub
             </h1>
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-[#06ffa5] text-[#0f0f23] font-semibold rounded-lg hover:bg-[#04cc83] transition-colors duration-200 shadow-md"
+              className="flex w-full items-center justify-center space-x-2 rounded-lg bg-[#06ffa5] px-4 py-2 font-saira text-[#0f0f23] shadow-md transition-colors duration-200 hover:bg-[#04cc83] sm:w-auto"
             >
               <Plus size={20} />
-              <span>Create New Post</span>
+              {/* Text changes slightly for better fit on small screens */}
+              <span className="sm:hidden">New Post</span>
+              <span className="hidden sm:inline">Create New Post</span>
             </button>
           </div>
 
+          {/* --- Loading, Error, and Empty States (No changes needed) --- */}
           {loading && (
-            <div className="text-center text-white py-8 flex justify-center items-center">
-              <Loader2 className="animate-spin text-[#06ffa5] w-6 h-6 mr-2" />{" "}
+            <div className="flex items-center justify-center py-8 text-white">
+              <Loader2 className="mr-2 h-6 w-6 animate-spin text-[#06ffa5]" />{" "}
               Loading Community Posts...
             </div>
           )}
-
           {error && (
-            <div className="text-center text-red-500 py-8">Error: {error}</div>
+            <div className="py-8 text-center text-red-500">Error: {error}</div>
           )}
-
           {!loading && !error && posts.length === 0 && (
-            <div className="text-center text-gray-400 py-8">
+            <div className="py-8 text-center font-saira text-gray-400">
               No community posts yet. Be the first to share!
             </div>
           )}
 
+          {/* --- Posts List --- */}
           {!loading && !error && posts.length > 0 && (
             <div className="space-y-6">
               {posts.map((post) => (
@@ -105,57 +102,55 @@ export default function CommunityPage() {
                   key={post._id}
                   className="block"
                 >
-                  <div className="bg-[#1a1a2e]/80 p-6 rounded-xl shadow-2xl border border-white/10 hover:border-[#4cc9f0]/50 transition-all duration-200 cursor-pointer">
-                    <h2 className="text-2xl font-bold text-white mb-2 hover:text-[#4cc9f0] transition-colors">
+                  <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/80 p-5 shadow-2xl transition-all duration-200 hover:border-[#4cc9f0]/50 sm:p-6">
+                    <h2 className="text-xl font-bold text-white transition-colors hover:text-[#4cc9f0] sm:text-2xl">
                       {post.title}
                     </h2>
-                    <p className="text-white/70 text-sm mb-3">
+                    <p className="mb-3 text-sm text-white/70">
                       Posted by{" "}
-                      <span className="text-[#06ffa5] font-semibold">
+                      <span className="font-semibold text-[#06ffa5]">
                         {post.user.username}
                       </span>{" "}
                       on {formatDate(post.createdAt)}
                     </p>
-
                     {post.body && (
-                      <p className="text-gray-300 mb-4 line-clamp-3">
+                      <p className="mb-4 font-saira text-gray-300 line-clamp-3">
                         {post.body}
                       </p>
                     )}
-
                     {post.type === "solution" && post.challengeId && (
-                      <p className="text-white/80 text-sm mb-4">
-                        Solution for Challenge:{" "}
-                        <span className="text-[#4cc9f0] font-semibold">
+                      <p className="mb-4 text-sm text-white/80">
+                        Solution for:{" "}
+                        <span className="font-semibold text-[#4cc9f0]">
                           {post.challengeId}
                         </span>
                       </p>
                     )}
 
-                    <div className="flex items-center space-x-4 text-gray-400 text-sm mt-4 border-t border-white/5 pt-4">
-                      {/* 💡 NEW: Display Upvote/Downvote counts and total score */}
-                      <div className="flex items-center space-x-1">
+                    {/* ✅ RESPONSIVE POST FOOTER */}
+                    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/5 pt-4 text-sm text-gray-400">
+                      {/* Vote Counts */}
+                      <div className="flex items-center space-x-1 font-saira">
                         <ThumbsUp size={16} className="text-green-500" />
                         <span>{post.upvotes.length}</span>
                       </div>
-                      <div className="flex items-center space-x-1">
+                      <div className="flex items-center space-x-1 font-saira">
                         <ThumbsDown size={16} className="text-red-500" />
                         <span>{post.downvotes.length}</span>
                       </div>
-                      <div className="flex items-center space-x-1 ml-auto font-semibold text-white/70">
-                        <Trophy size={16} className="text-yellow-400" />
-                        <span>{post.user.totalPoints} Points</span>{" "}
-                        {/* Display poster's total points */}
-                      </div>
-                      <div className="flex items-center space-x-1">
+                      {/* Comment Count */}
+                      <div className="flex items-center space-x-1 font-saira">
                         <MessageSquare size={16} />
-                        <span>
-                          {post.comments.length}{" "}
-                          {post.comments.length === 1 ? "Comment" : "Comments"}
-                        </span>
+                        <span>{post.comments.length}</span>
                       </div>
+                      {/* User Points (pushed to the right on larger screens) */}
+                      <div className="flex items-center space-x-1 font-saira font-semibold text-white/70 sm:ml-auto">
+                        <Trophy size={16} className="text-yellow-400" />
+                        <span>{post.user.totalPoints} Points</span>
+                      </div>
+                      {/* Tags (if they exist) */}
                       {post.tags && post.tags.length > 0 && (
-                        <div className="flex items-center space-x-1">
+                        <div className="flex w-full items-center space-x-1 pt-2">
                           <Tag size={16} />
                           <span className="italic">{post.tags.join(", ")}</span>
                         </div>

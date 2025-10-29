@@ -86,13 +86,13 @@ export default function Dashboard() {
         <Sidebar />
 
         {/* Main content */}
-        <div className="ml-64 p-8">
+        <div className="p-8 pt-24 md:ml-64 md:pt-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-white mb-2 font-mono">
+            <h1 className="text-4xl font-saira text-white mb-2 ">
               Coding Challenges
             </h1>
-            <p className="text-white/60 text-lg">
+            <p className="text-white/60 text-lg font-saira">
               Master React concepts through hands-on coding challenges
             </p>
           </div>
@@ -133,7 +133,7 @@ export default function Dashboard() {
 
           {/* Coming Soon Section - (Remains unchanged) */}
           <div className="mt-12">
-            <h2 className="text-2xl font-bold text-white mb-6 font-mono gradient-text">
+            <h2 className="text-2xl font-saira text-white mb-6 font-saira gradient-text">
               Coming Soon
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -148,20 +148,20 @@ export default function Dashboard() {
                 >
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <h3 className="text-xl font-bold text-white/70 font-mono">
+                      <h3 className="text-xl font-saira text-white/70">
                         {challenge.title}
                       </h3>
                       <div className="flex items-center space-x-2">
-                        <span className="text-xs text-white/30">
+                        <span className="text-xs text-white/30 font-saira">
                           Difficulty:
                         </span>
-                        <span className="text-xs font-medium text-white/50">
+                        <span className="text-xs font-saira text-white/50">
                           {challenge.difficulty}
                         </span>
                       </div>
                     </div>
 
-                    <div className="w-full bg-white/5 text-white/40 font-semibold py-2.5 rounded-lg text-center border border-white/10">
+                    <div className="w-full bg-white/5 text-white/40 font-semibold py-2.5 rounded-lg text-center border border-white/10 font-saira">
                       Coming Soon
                     </div>
                   </div>

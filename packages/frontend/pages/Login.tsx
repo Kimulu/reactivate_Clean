@@ -194,7 +194,7 @@ export default function LoginPage() {
                 }}
                 placeholder="Enter your username"
                 className="w-full px-10 py-2 bg-[#0f0f23]/60 border rounded-lg text-white 
-                           focus:outline-none focus:ring-2 focus:ring-[#06ffa5] transition duration-200"
+                           focus:outline-none transition duration-200"
                 variants={inputBorderVariants}
                 animate={getAnimationState(usernameTouched, isUsernameValid)}
                 initial={false}
@@ -248,7 +248,7 @@ export default function LoginPage() {
                 }}
                 placeholder="Enter your password"
                 className="w-full px-10 py-2 bg-[#0f0f23]/60 border rounded-lg text-white 
-                           focus:outline-none focus:ring-2 focus:ring-[#06ffa5] transition duration-200"
+                           focus:outline-none transition duration-200"
                 variants={inputBorderVariants}
                 animate={getAnimationState(passwordTouched, isPasswordValid)}
                 initial={false}

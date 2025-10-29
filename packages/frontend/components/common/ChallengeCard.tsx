@@ -48,11 +48,11 @@ export function ChallengeCard({
       <div className="space-y-4">
         {/* Title & Instructions */}
         <div className="space-y-2">
-          <h3 className="text-xl font-bold text-white font-mono group-hover:gradient-text transition-all duration-300">
+          <h3 className="text-xl text-white font-saira group-hover:gradient-text transition-all duration-300">
             {title}
           </h3>
           {instructions && (
-            <p className="text-white/70 text-sm leading-relaxed">
+            <p className="text-white/70 text-sm leading-relaxed font-saira">
               {instructions}
             </p>
           )}
@@ -62,7 +62,7 @@ export function ChallengeCard({
               <div className="flex items-center space-x-1">
                 <span>Difficulty:</span>
                 <span
-                  className={`font-medium ${getDifficultyColor(difficulty)}`}
+                  className={`font-saira ${getDifficultyColor(difficulty)}`}
                 >
                   {difficulty}
                 </span>
@@ -72,9 +72,7 @@ export function ChallengeCard({
               <div className="flex items-center space-x-1">
                 <Trophy size={14} className="text-yellow-400" />{" "}
                 {/* Trophy icon for points */}
-                <span className="font-medium text-yellow-300">
-                  {points} pts
-                </span>
+                <span className="font-saira text-yellow-300">{points} pts</span>
               </div>
             )}
           </div>
@@ -82,7 +80,7 @@ export function ChallengeCard({
 
         {/* Start Button links to challenge page */}
         <Link href={`/challenges/${id}`} passHref>
-          <Button className="w-full bg-gradient-to-r from-[#4cc9f0] to-[#06ffa5] hover:from-[#06ffa5] hover:to-[#4cc9f0] text-[#0f172a] font-semibold py-2.5 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-[#4cc9f0]/30">
+          <Button className="w-full bg-gradient-to-r from-[#4cc9f0] to-[#06ffa5] hover:from-[#06ffa5] hover:to-[#4cc9f0] text-[#0f172a] font-saira py-2.5 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-[#4cc9f0]/30">
             {isCompleted ? "View Solution" : "Start"}{" "}
             {/* 💡 MODIFIED: Button text changes if completed */}
           </Button>
