@@ -401,6 +401,15 @@ export default function ChallengeDetail() {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // --- Mobile alert modal state ---
+  const [showMobileAlert, setShowMobileAlert] = useState(false);
+
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      const dismissed = localStorage.getItem("mobileAlertDismissed");
+      if (!dismissed) setShowMobileAlert(true);
+    }
+  }, []);
 
   const getCurrentUserId = () => {
     try {
@@ -525,12 +534,12 @@ export default function ChallengeDetail() {
     Object.keys(sandpackFiles)[0];
 
   return (
-    <div className="h-full flex flex-col bg-[#0f172a] text-white">
+    <div className="h-screen flex flex-col bg-[#0f172a] text-white">
       {/* --- Header Bar --- */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-[#0f172a]">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-4 py-3 border-b border-gray-800 bg-[#0f172a]">
         <button
           onClick={() => router.push("/challenges")}
-          className="flex items-center gap-2 text-gray-300 hover:text-[#06ffa5] transition-colors"
+          className="flex items-center gap-2 text-[#06ffa5] text-sm md:text-base font-semibold hover:underline"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -546,13 +555,36 @@ export default function ChallengeDetail() {
               d="M15.75 19.5L8.25 12l7.5-7.5"
             />
           </svg>
-          <span className="font-medium">Back to Challenges</span>
+          Back to Challenges
         </button>
 
-        <h1 className="text-lg font-semibold text-white">
+        <h1 className="text-lg md:text-2xl font-bold text-white text-center md:text-right truncate">
           {challenge.title || "Challenge"}
         </h1>
       </div>{" "}
+      {showMobileAlert && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl shadow-xl max-w-sm w-full p-6 text-center border border-gray-700">
+            <h2 className="text-xl font-bold mb-3 text-white">
+              ⚠️ Desktop Recommended
+            </h2>
+            <p className="text-gray-300 text-sm mb-6">
+              For the best experience, we recommend using a{" "}
+              <b>laptop or desktop</b> to complete challenges. You can continue
+              on mobile, but some features may be limited.
+            </p>
+            <button
+              onClick={() => {
+                localStorage.setItem("mobileAlertDismissed", "true");
+                setShowMobileAlert(false);
+              }}
+              className="bg-[#06ffa5] text-black font-semibold px-4 py-2 rounded-lg hover:bg-[#04cc85] transition"
+            >
+              Continue Anyway
+            </button>
+          </div>
+        </div>
+      )}
       <SandpackProvider
         key={challenge.id}
         template="react"
@@ -575,86 +607,136 @@ export default function ChallengeDetail() {
           autoReload: true,
         }}
       >
-        {/* Wrap everything inside a vertical PanelGroup */}
-        <PanelGroup direction="vertical" style={{ height: "570px" }}>
+        {/* --- Responsive Vertical Layout --- */}
+        <PanelGroup
+          direction="vertical"
+          style={{ height: "calc(100vh - 140px)" }}
+          className="sm:h-[570px]"
+        >
           {/* === Main Coding Area === */}
           <Panel defaultSize={75} minSize={50}>
-            <SandpackLayout
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-              }}
-            >
-              <PanelGroup direction="horizontal">
-                {/* Instructions */}
-                <Panel defaultSize={20} minSize={10}>
-                  <div className="border-r border-gray-700 flex flex-col h-full">
-                    <div className="border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
-                      Instructions
+            <SandpackLayout className="flex flex-col h-full">
+              {/* Desktop (md+) Horizontal Panels */}
+              <div className="hidden md:flex h-full">
+                <PanelGroup direction="horizontal">
+                  {/* === Instructions === */}
+                  <Panel defaultSize={20} minSize={10}>
+                    <div className="border-r border-gray-700 flex flex-col h-full bg-[#0f172a]">
+                      <div className="border-b border-gray-700 px-3 py-2 text-sm bg-gray-800 font-semibold">
+                        Instructions
+                      </div>
+                      <div className="flex-1 overflow-auto p-4 text-gray-300 text-sm">
+                        <h1 className="text-xl font-bold mb-4">
+                          {challenge.title}
+                        </h1>
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: challenge.instructions,
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="flex-1 overflow-auto p-4">
-                      <h1 className="text-xl font-bold mb-4">
-                        {challenge.title}
-                      </h1>
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: challenge.instructions,
-                        }}
-                        className="text-gray-300"
-                      />
-                    </div>
-                  </div>
-                </Panel>
+                  </Panel>
 
-                {/* Handle */}
-                <PanelResizeHandle className="w-1 bg-gray-800 hover:bg-[#06ffa5] transition-colors" />
+                  <PanelResizeHandle className="w-1 bg-gray-800 hover:bg-[#06ffa5] transition-colors" />
+
+                  {/* === Editor === */}
+                  <Panel defaultSize={40} minSize={25}>
+                    <div className="border-r border-gray-700 flex flex-col h-full">
+                      <div className="border-b border-gray-700">
+                        {Object.keys(sandpackFiles).length > 0 && (
+                          <FileTabs
+                            allowedFiles={Object.keys(sandpackFiles).filter(
+                              (file) => !sandpackFiles[file]?.hidden
+                            )}
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1 overflow-auto">
+                        <CustomAceEditor />
+                      </div>
+                    </div>
+                  </Panel>
+
+                  <PanelResizeHandle className="w-1 bg-gray-800 hover:bg-[#06ffa5] transition-colors" />
+
+                  {/* === Preview === */}
+                  <Panel defaultSize={40} minSize={25}>
+                    <div className="flex flex-col h-full">
+                      <div className="border-b border-gray-700 px-3 py-2 text-sm bg-gray-800 font-semibold">
+                        Preview
+                      </div>
+                      <div className="flex-1 overflow-auto bg-white">
+                        <SandpackPreview
+                          showOpenInCodeSandbox={false}
+                          showRefreshButton={false}
+                          showSandpackErrorOverlay={false}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            backgroundColor: "white",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </Panel>
+                </PanelGroup>
+              </div>
+
+              {/* --- Mobile Layout (Stacked) --- */}
+              <div className="flex flex-col md:hidden h-full">
+                {/* Instructions */}
+                <div className="flex-1 overflow-auto border-b border-gray-700 bg-[#0f172a]">
+                  <div className="px-3 py-2 text-sm bg-gray-800 font-semibold border-b border-gray-700">
+                    Instructions
+                  </div>
+                  <div className="p-3 text-gray-300 text-sm">
+                    <h1 className="text-lg font-bold mb-3">
+                      {challenge.title}
+                    </h1>
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: challenge.instructions,
+                      }}
+                    />
+                  </div>
+                </div>
 
                 {/* Editor */}
-                <Panel defaultSize={40} minSize={25}>
-                  <div className="border-r border-gray-700 flex flex-col h-full">
-                    <div className="border-b border-gray-700">
-                      {Object.keys(sandpackFiles).length > 0 && (
-                        <FileTabs
-                          allowedFiles={Object.keys(sandpackFiles).filter(
-                            (file) => !sandpackFiles[file]?.hidden
-                          )}
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1 overflow-auto">
-                      <CustomAceEditor />
-                    </div>
+                <div className="flex-1 overflow-auto border-b border-gray-700 bg-[#0f172a]">
+                  <div className="border-b border-gray-700">
+                    {Object.keys(sandpackFiles).length > 0 && (
+                      <FileTabs
+                        allowedFiles={Object.keys(sandpackFiles).filter(
+                          (file) => !sandpackFiles[file]?.hidden
+                        )}
+                      />
+                    )}
                   </div>
-                </Panel>
-
-                <PanelResizeHandle className="w-1 bg-gray-800 hover:bg-[#06ffa5] transition-colors" />
+                  <CustomAceEditor />
+                </div>
 
                 {/* Preview */}
-                <Panel defaultSize={40} minSize={25}>
-                  <div className="flex flex-col h-full">
-                    <div className="border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
-                      Preview
-                    </div>
-                    <div className="flex-1 overflow-auto">
-                      <SandpackPreview
-                        showOpenInCodeSandbox={false}
-                        showRefreshButton={false}
-                        showSandpackErrorOverlay={false}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          backgroundColor: "white",
-                        }}
-                      />
-                    </div>
+                <div className="flex-1 overflow-auto bg-white">
+                  <div className="px-3 py-2 text-sm bg-gray-800 text-white font-semibold border-b border-gray-700">
+                    Preview
                   </div>
-                </Panel>
-              </PanelGroup>
+                  <SandpackPreview
+                    showOpenInCodeSandbox={false}
+                    showRefreshButton={false}
+                    showSandpackErrorOverlay={false}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      backgroundColor: "white",
+                    }}
+                  />
+                </div>
+              </div>
             </SandpackLayout>
           </Panel>
 
-          {/* Vertical Resize Handle between main and tests */}
+          {/* --- Resize Handle Between Main and Tests --- */}
           <PanelResizeHandle className="h-2 bg-gray-800 hover:bg-[#06ffa5] transition-colors cursor-row-resize" />
 
           {/* === Test Runner Section === */}

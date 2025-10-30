@@ -165,7 +165,6 @@
 @layer base {
   :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
     h1 {
-      font-family: var(--font-chicle);
       font-size: var(--text-2xl);
       font-weight: 700;
       line-height: 1.2;
