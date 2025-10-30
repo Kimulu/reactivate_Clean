@@ -176,7 +176,8 @@ exports.runChallengeTests = async (req, res) => {
     const results = await testRunnerService.runTests(
       challengeId,
       userSolutionFiles,
-      challenge.testCode
+      challenge.testCode,
+      true
     );
 
     res.status(200).json(results);

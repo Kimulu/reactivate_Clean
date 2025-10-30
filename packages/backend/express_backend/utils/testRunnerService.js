@@ -4,19 +4,25 @@ const path = require("path");
 const fsExtra = require("fs-extra");
 const { v4: uuidv4 } = require("uuid");
 const cliProgress = require("cli-progress");
-const stripAnsi = require("strip-ansi").default;
 const chalk = require("chalk");
+// 1. Import the new library
+const AnsiToHtml = require("ansi-to-html");
 
-process.env.FORCE_COLOR = "0";
+// 2. Create a new converter instance with some sensible defaults
+const converter = new AnsiToHtml({
+  newline: true, // Use <br/> for newlines
+  escapeXML: true, // Escape XML characters
+  fg: "#FFF", // Default foreground color
+  bg: "#1e1e1e", // Default background color (matches terminal styling)
+});
 
-// ---------- Helper to parse and format Jest JSON ----------
+// The parseJestOutput function generates the rich ANSI text string. It is correct as is.
 const parseJestOutput = async (jsonOutput, colorize = true) => {
   try {
     const data = JSON.parse(jsonOutput);
     let passedCount = 0;
     let failedCount = 0;
     const lines = [];
-
     const totalTests = data.numTotalTests || 0;
 
     const progressBar = new cliProgress.SingleBar(
@@ -29,21 +35,20 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
       cliProgress.Presets.shades_classic
     );
 
-    progressBar.start(totalTests, 0);
+    // Note: The progress bar will only appear in the server's console, not the final HTML.
+    if (totalTests > 0 && colorize && process.stdout.isTTY) {
+      progressBar.start(totalTests, 0);
+    }
 
     for (const testFile of data.testResults || []) {
-      const fileName = path.basename(testFile.name || "Test");
+      const fileName = path.basename(testFile.name || "Test File");
       const hasFailures = testFile.assertionResults.some(
         (a) => a.status === "failed"
       );
       const headerLabel = hasFailures ? " FAIL " : " PASS ";
       const badge = hasFailures
-        ? chalk.bgRed.white.bold(
-            `╭──────────╮\n│  ${headerLabel}  │\n╰──────────╯`
-          )
-        : chalk.bgGreen.black.bold(
-            `╭──────────╮\n│  ${headerLabel}  │\n╰──────────╯`
-          );
+        ? chalk.bgRed.white.bold(` FAIL `) // Simple text with spaces for padding
+        : chalk.bgGreen.black.bold(` PASS `); // Simple text with spaces for padding
 
       lines.push(
         colorize
@@ -51,7 +56,7 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
           : `${hasFailures ? "FAIL" : "PASS"} ${fileName}`
       );
 
-      for (const [index, assertion] of testFile.assertionResults.entries()) {
+      for (const assertion of testFile.assertionResults) {
         const passed = assertion.status === "passed";
         const icon = passed ? "✅" : "❌";
         const iconColor = passed ? chalk.greenBright : chalk.redBright;
@@ -60,8 +65,10 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
         if (passed) passedCount++;
         else failedCount++;
 
-        progressBar.update(passedCount + failedCount);
-        await new Promise((r) => setTimeout(r, 60));
+        if (totalTests > 0 && colorize && process.stdout.isTTY) {
+          progressBar.update(passedCount + failedCount);
+          await new Promise((r) => setTimeout(r, 60));
+        }
 
         lines.push(
           colorize
@@ -80,11 +87,12 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
           lines.push(chalk.gray(`      ${message.replace(/^/gm, "      ")}`));
         }
       }
-
       lines.push("");
     }
 
-    progressBar.stop();
+    if (totalTests > 0 && colorize && process.stdout.isTTY) {
+      progressBar.stop();
+    }
 
     const total = passedCount + failedCount;
     const greenBar = chalk.green("▰".repeat(passedCount));
@@ -99,10 +107,10 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
         ? `${chalk.bold.yellow("📊 Summary:")} ${chalk.greenBright(
             `${passedCount} passed`
           )}, ${chalk.redBright(`${failedCount} failed`)}\n${summaryBar}\n`
-        : `Summary: ${passedCount} passed, ${failedCount} failed\n${summaryBar}\n`);
+        : `Summary: ${passedCount} passed, ${failedCount} failed\n`);
 
     return {
-      passed: failedCount === 0,
+      passed: failedCount === 0 && totalTests > 0 && data.success === true,
       output: lines.join("\n") + summary,
       detailedResults: [],
     };
@@ -115,57 +123,7 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
   }
 };
 
-// ---------- Run Jest with proper waiting ----------
-async function runJestAndWait(tempDir, testFileName, jestConfigPath) {
-  return new Promise((resolve, reject) => {
-    const args = [
-      "jest",
-      "--json",
-      "--colors=false",
-      "--silent",
-      "--noStackTrace",
-      "--verbose=false",
-      `--outputFile=jest-results.json`,
-      `--testPathPatterns="${testFileName}"`,
-      `--config="${jestConfigPath}"`,
-      "--runInBand",
-    ];
-
-    const jestProcess = spawn("npx", args, {
-      cwd: tempDir,
-      shell: true,
-      env: { ...process.env, FORCE_COLOR: "0" },
-    });
-
-    let stdout = "";
-    let stderr = "";
-
-    jestProcess.stdout.on("data", (data) => (stdout += data.toString()));
-    jestProcess.stderr.on("data", (data) => (stderr += data.toString()));
-
-    jestProcess.on("error", reject);
-
-    jestProcess.on("close", async (code) => {
-      const resultsPath = path.join(tempDir, "jest-results.json");
-      let retries = 0;
-      const maxRetries = 10;
-
-      while (retries < maxRetries) {
-        try {
-          const rawJson = await fs.readFile(resultsPath, "utf8");
-          return resolve({ stdout, stderr, rawJson });
-        } catch {
-          await new Promise((r) => setTimeout(r, 300));
-          retries++;
-        }
-      }
-
-      reject(new Error("Jest results not ready after retries"));
-    });
-  });
-}
-
-// ---------- Main test runner ----------
+// Docker-based Secure Jest Runner
 exports.runTests = async (
   challengeId,
   userSolutionFiles,
@@ -173,107 +131,88 @@ exports.runTests = async (
   colorize = true
 ) => {
   const tempDir = path.join(__dirname, "..", "temp_challenge_runs", uuidv4());
-  const backendRoot = path.resolve(__dirname, "..");
-  let testResults = {
+  let result = {
     passed: false,
-    output: "An unexpected error occurred.",
+    output: "Unexpected error.",
     detailedResults: [],
   };
 
   try {
     await fs.mkdir(tempDir, { recursive: true });
 
-    // Write user files
     for (const filePath in userSolutionFiles) {
       const fullPath = path.join(tempDir, filePath);
       await fs.mkdir(path.dirname(fullPath), { recursive: true });
       await fs.writeFile(fullPath, userSolutionFiles[filePath]);
     }
 
-    // Symlink node_modules
-    const sourceNodeModules = path.join(backendRoot, "node_modules");
-    const targetNodeModules = path.join(tempDir, "node_modules");
-    try {
-      await fs.symlink(sourceNodeModules, targetNodeModules, "junction");
-    } catch {
-      console.warn("Symlink failed, skipping...");
-    }
+    const adjustedTestContent = testFileContent
+      .replace(/from\s+(['"])\.\.\//g, (match, quote) => `from ${quote}./`)
+      .replace(/require\(['"]\.\.\//g, "require('./")
+      .replace(/(\.\.\/)+/g, "./");
 
-    // Copy config files
-    const configFiles = ["babel.config.js", "jest.config.js", "setupTests.js"];
-    for (const file of configFiles) {
-      const src = path.join(backendRoot, file);
-      const dest = path.join(tempDir, file);
-      if (await fs.stat(src).catch(() => false)) {
-        await fs.copyFile(src, dest);
-      }
-    }
+    const testPath = path.join(tempDir, "solution.test.js");
+    await fs.writeFile(testPath, adjustedTestContent);
 
-    // Copy mocks if present
-    const mocksDir = path.join(backendRoot, "__mocks__");
-    const mockFile = path.join(mocksDir, "styleMock.js");
-    if (await fs.stat(mockFile).catch(() => false)) {
-      const targetMocks = path.join(tempDir, "__mocks__");
-      await fs.mkdir(targetMocks, { recursive: true });
-      await fs.copyFile(mockFile, path.join(targetMocks, "styleMock.js"));
-    }
+    const dockerResult = await new Promise((resolve, reject) => {
+      const isWindows = process.platform === "win32";
+      const currentUser = isWindows
+        ? {}
+        : { user: `${process.getuid()}:${process.getgid()}` };
+      const args = [
+        "run",
+        "--rm",
+        ...(isWindows ? [] : ["--user", currentUser.user]),
+        "--memory=512m",
+        "--cpus=1",
+        "--network=none",
+        "-v",
+        `${tempDir}:/usr/src/app/challenge`,
+        "reactivate-jest-runner",
+      ];
+      const dockerProcess = spawn("docker", args, { shell: true });
+      let stdout = "";
+      let stderr = "";
+      dockerProcess.stdout.on("data", (d) => (stdout += d.toString()));
+      dockerProcess.stderr.on("data", (d) => (stderr += d.toString()));
+      dockerProcess.on("error", reject);
+      dockerProcess.on("close", async (code) => {
+        try {
+          const resultsPath = path.join(tempDir, "jest-results.json");
+          const jsonOutput = await fs.readFile(resultsPath, "utf8");
+          resolve({ stdout: jsonOutput, stderr });
+        } catch (err) {
+          resolve({ stdout, stderr: stderr || err.message });
+        }
+      });
+    });
 
-    // Write test file
-    const testFileName = "solution.test.js";
-    const testFilePath = path.join(tempDir, testFileName);
-    const adjustedTestContent = testFileContent.replace(
-      /from\s+(['"])\.\.\//g,
-      (match, quote) => `from ${quote}./`
-    );
-    await fs.writeFile(testFilePath, adjustedTestContent);
+    // Generate the rich, colorized ANSI output string.
+    const parsed = await parseJestOutput(dockerResult.stdout, colorize);
 
-    const jestConfig = path.join(tempDir, "jest.config.js");
-
-    // 🧠 Wait for Jest to fully complete
-    const { stdout, stderr, rawJson } = await runJestAndWait(
-      tempDir,
-      testFileName,
-      jestConfig
-    );
-
-    const cleanedStdout = stripAnsi(stdout || "");
-    const parsed = await parseJestOutput(rawJson || "{}", colorize);
-
-    testResults.output = stripAnsi(parsed.output + "\n" + cleanedStdout.trim());
-    testResults.passed = parsed.passed;
-    testResults.detailedResults = parsed.detailedResults;
+    // 3. THE FINAL STEP: Convert the ANSI string to HTML and prepare the result.
+    result = {
+      passed: parsed.passed,
+      // The output is now the HTML version of the ANSI string.
+      output: converter.toHtml(parsed.output),
+      detailedResults: parsed.detailedResults,
+    };
   } catch (error) {
-    console.error("Error during test execution:", error);
-    testResults = {
+    console.error("💥 Error during Docker test execution:", error);
+    result = {
       passed: false,
       output: `Test runner internal error: ${error.message}`,
       detailedResults: [
-        {
-          title: "Internal test runner error",
-          status: "failed",
-          message: error.message,
-        },
+        { title: "Runner Error", status: "failed", message: error.message },
       ],
     };
   } finally {
-    // 🧹 Retry cleanup if Windows has a lock
-    let retries = 0;
-    const maxRetries = 5;
-    while (retries < maxRetries) {
-      try {
-        await fsExtra.remove(tempDir);
-        break;
-      } catch (err) {
-        if (err.code === "EBUSY") {
-          await new Promise((r) => setTimeout(r, 400));
-          retries++;
-        } else {
-          console.warn("Cleanup failed:", err.message);
-          break;
-        }
-      }
+    try {
+      await fsExtra.remove(tempDir);
+    } catch (cleanupError) {
+      console.warn("⚠️ Cleanup failed:", cleanupError.message);
     }
   }
 
-  return testResults;
+  return result;
 };

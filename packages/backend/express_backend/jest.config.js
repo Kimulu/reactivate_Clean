@@ -1,17 +1,20 @@
 // packages/backend/express_backend/jest.config.js
+const path = require("path");
+
 module.exports = {
-  // Set rootDir to the current working directory (the temp directory)
   rootDir: ".",
   testEnvironment: "jsdom",
   transform: {
     "^.+\\.(js|jsx|ts|tsx)$": "babel-jest",
   },
   moduleFileExtensions: ["js", "jsx", "json", "node", "ts", "tsx"],
-  setupFilesAfterEnv: ["<rootDir>/setupTests.js"],
+
+  // ✅ Use absolute path for setup file
+  setupFilesAfterEnv: [path.resolve("/usr/src/app/setupTests.js")],
+
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "<rootDir>/__mocks__/styleMock.js",
   },
   testTimeout: 10000,
-  // 💡 NEW: Explicitly tell Jest where to find node_modules
   modulePaths: ["<rootDir>/node_modules"],
 };

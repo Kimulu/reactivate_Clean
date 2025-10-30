@@ -23,7 +23,10 @@ export function Hero() {
       />
 
       {/* 2. MAIN CONTENT SECTION: Set to min-h-screen and z-index 10 (high enough to be above the particles). */}
-      <section className="relative min-h-screen flex items-center justify-center z-10 overflow-hidden px-4 sm:px-6">
+      <section
+        id="home"
+        className="relative min-h-screen flex items-center justify-center z-10 overflow-hidden px-4 sm:px-6"
+      >
         {/* 🎨 Layer 1: Gradient Overlay (Sits on top of particles, but below foreground content) */}
         <div className="absolute inset-0  opacity-90 z-[1]"></div>
 

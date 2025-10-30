@@ -1,16 +1,17 @@
+import styles from "../../styles/TestOutput.module.css";
+
 import { useRouter } from "next/router";
 import {
   SandpackProvider,
   SandpackLayout,
   SandpackPreview,
-  useSandpack, // We still need useSandpack to get the current files from the editor
+  useSandpack,
 } from "@codesandbox/sandpack-react";
-import CustomAceEditor from "@/components/CustomAceEditor"; // Your existing Ace Editor
-import FileTabs from "@/components/FileTabs"; // Your existing FileTabs
+import CustomAceEditor from "@/components/CustomAceEditor";
+import FileTabs from "@/components/FileTabs";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
-// 💡 MODIFIED: Import apiClient and Challenge, and the new TestResult/CustomTestRunResponse interfaces
 import {
   apiClient,
   Challenge,
@@ -22,7 +23,6 @@ import { updateUserTotalPoints } from "@/store/userSlice";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 // --- START CustomTestDisplay Component ---
-// This is your custom display for test results, replacing SandpackTests
 function CustomTestDisplay({
   testResults,
   testOutput,
@@ -51,10 +51,12 @@ function CustomTestDisplay({
 
   return (
     <div className="p-4 bg-[#0f172a] text-gray-200 font-mono text-sm overflow-auto h-full">
+      {/* ✅ MODIFIED: Use dangerouslySetInnerHTML to render HTML from the backend */}
       {testOutput && (
-        <pre className="whitespace-pre-wrap mb-4 bg-gray-900 p-2 rounded">
-          {testOutput}
-        </pre>
+        <pre
+          className="whitespace-pre-wrap mb-4 bg-gray-900 p-2 rounded"
+          dangerouslySetInnerHTML={{ __html: testOutput }}
+        />
       )}
       {testResults.length > 0 && (
         <div className="space-y-2">
@@ -124,7 +126,6 @@ function TestRunner({ challenge }: { challenge: any }) {
   const [submissionPhase, setSubmissionPhase] =
     useState<SubmissionPhase>("idle");
 
-  // Detect code edits
   useEffect(() => {
     const unsubscribe = listen((msg) => {
       if (msg.type === "fs/change") {
@@ -135,7 +136,6 @@ function TestRunner({ challenge }: { challenge: any }) {
     return () => unsubscribe();
   }, [sandpack]);
 
-  // --- Run custom backend tests instead of Sandpack tests ---
   const runCustomTests = useCallback(async (): Promise<boolean> => {
     setIsRunning(true);
     setHasRun(true);
@@ -164,7 +164,6 @@ function TestRunner({ challenge }: { challenge: any }) {
 
       const passed = response.passed === true;
 
-      // ✅ Store backend output so frontend shows custom output
       setTestOutput(response.output || "No output received from backend.");
 
       if (passed) {
@@ -191,7 +190,6 @@ function TestRunner({ challenge }: { challenge: any }) {
     }
   }, [sandpack.files, challengeId]);
 
-  // --- Submission flow ---
   const handleRunTests = () => runCustomTests();
 
   const handleRunTestsForSubmission = async () => {
@@ -244,12 +242,10 @@ function TestRunner({ challenge }: { challenge: any }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* --- Header --- */}
       <div className="flex items-center justify-between border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-white">Tests</span>
 
-          {/* --- Run Tests --- */}
           <button
             onClick={handleRunTests}
             className={`px-2 py-1 rounded-md text-white transition-colors duration-200 ${
@@ -262,7 +258,6 @@ function TestRunner({ challenge }: { challenge: any }) {
             {isRunning ? "Running..." : "Run Tests"}
           </button>
 
-          {/* --- Attempt / Submit --- */}
           {hasRun && (
             <button
               onClick={() => {
@@ -295,33 +290,32 @@ function TestRunner({ challenge }: { challenge: any }) {
         )}
       </div>
 
-      {/* --- Test Output Placeholder --- */}
       {isOpen && (
-        <div className="bg-black text-gray-200 text-sm p-3 rounded-md overflow-x-auto border border-gray-700 h-64 font-mono whitespace-pre-wrap flex items-center justify-center">
+        <div className={`${styles.testOutputContainer} h-64`}>
+          {" "}
           {isRunning ? (
-            // Show spinner while tests are running
             <div className="flex items-center space-x-2 text-gray-400">
               <Loader2 className="animate-spin text-[#06ffa5]" size={20} />
               <span>Running tests...</span>
             </div>
           ) : testOutput ? (
-            // ✅ When backend test results arrive
-            <pre className="text-left w-full">{testOutput}</pre>
+            // ✅ MODIFIED: Use dangerouslySetInnerHTML here to render the HTML.
+            <pre
+              className="text-left w-full"
+              dangerouslySetInnerHTML={{ __html: testOutput }}
+            />
           ) : hasRun ? (
-            // When tests finished but output is empty (rare case)
             <p>
               {testsPassed
                 ? "✅ All tests passed successfully."
                 : "❌ Some tests failed. Check your logic."}
             </p>
           ) : (
-            // Before user ever runs tests
             <p>Run tests to see output...</p>
           )}
         </div>
       )}
 
-      {/* --- Submission Modal --- */}
       {isSubmitModalOpen && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-[#1a1a2e] p-8 rounded-lg shadow-2xl text-white max-w-sm w-full border border-[#06ffa5]/20">
@@ -393,7 +387,6 @@ function TestRunner({ challenge }: { challenge: any }) {
   );
 }
 
-// 💡 The new, simplified ChallengeDetail component
 export default function ChallengeDetail() {
   const router = useRouter();
   const { id } = router.query;
@@ -401,7 +394,6 @@ export default function ChallengeDetail() {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // --- Mobile alert modal state ---
   const [showMobileAlert, setShowMobileAlert] = useState(false);
 
   useEffect(() => {
@@ -437,7 +429,6 @@ export default function ChallengeDetail() {
         );
         setChallenge(fetchedChallenge);
 
-        // --- NEW: Fetch user submission and merge it ---
         const userId = getCurrentUserId();
         console.log("🔍 userId:", userId);
 
@@ -475,7 +466,6 @@ export default function ChallengeDetail() {
     fetchIndividualChallenge();
   }, [id]);
 
-  // Memoize `files` for SandpackProvider for performance and stability
   const sandpackFiles = useMemo(() => {
     const files: Record<
       string,
@@ -490,7 +480,7 @@ export default function ChallengeDetail() {
               code: fileData.code,
               hidden: fileData.hidden ?? false,
               active: fileData.active ?? false,
-              readOnly: fileData.readOnly ?? false, // Ensure readOnly is passed
+              readOnly: fileData.readOnly ?? false,
             };
           } else {
             console.warn(
@@ -528,14 +518,12 @@ export default function ChallengeDetail() {
     );
   }
 
-  // Determine the active file for Sandpack
   const activeFile =
     Object.keys(sandpackFiles).find((path) => sandpackFiles[path]?.active) ||
     Object.keys(sandpackFiles)[0];
 
   return (
     <div className="h-screen flex flex-col bg-[#0f172a] text-white">
-      {/* --- Header Bar --- */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-4 py-3 border-b border-gray-800 bg-[#0f172a]">
         <button
           onClick={() => router.push("/challenges")}
@@ -607,19 +595,15 @@ export default function ChallengeDetail() {
           autoReload: true,
         }}
       >
-        {/* --- Responsive Vertical Layout --- */}
         <PanelGroup
           direction="vertical"
           style={{ height: "calc(100vh - 140px)" }}
           className="sm:h-[570px]"
         >
-          {/* === Main Coding Area === */}
           <Panel defaultSize={75} minSize={50}>
             <SandpackLayout className="flex flex-col h-full">
-              {/* Desktop (md+) Horizontal Panels */}
               <div className="hidden md:flex h-full">
                 <PanelGroup direction="horizontal">
-                  {/* === Instructions === */}
                   <Panel defaultSize={20} minSize={10}>
                     <div className="border-r border-gray-700 flex flex-col h-full bg-[#0f172a]">
                       <div className="border-b border-gray-700 px-3 py-2 text-sm bg-gray-800 font-semibold">
@@ -640,7 +624,6 @@ export default function ChallengeDetail() {
 
                   <PanelResizeHandle className="w-1 bg-gray-800 hover:bg-[#06ffa5] transition-colors" />
 
-                  {/* === Editor === */}
                   <Panel defaultSize={40} minSize={25}>
                     <div className="border-r border-gray-700 flex flex-col h-full">
                       <div className="border-b border-gray-700">
@@ -660,7 +643,6 @@ export default function ChallengeDetail() {
 
                   <PanelResizeHandle className="w-1 bg-gray-800 hover:bg-[#06ffa5] transition-colors" />
 
-                  {/* === Preview === */}
                   <Panel defaultSize={40} minSize={25}>
                     <div className="flex flex-col h-full">
                       <div className="border-b border-gray-700 px-3 py-2 text-sm bg-gray-800 font-semibold">
@@ -683,9 +665,7 @@ export default function ChallengeDetail() {
                 </PanelGroup>
               </div>
 
-              {/* --- Mobile Layout (Stacked) --- */}
               <div className="flex flex-col md:hidden h-full">
-                {/* Instructions */}
                 <div className="flex-1 overflow-auto border-b border-gray-700 bg-[#0f172a]">
                   <div className="px-3 py-2 text-sm bg-gray-800 font-semibold border-b border-gray-700">
                     Instructions
@@ -702,7 +682,6 @@ export default function ChallengeDetail() {
                   </div>
                 </div>
 
-                {/* Editor */}
                 <div className="flex-1 overflow-auto border-b border-gray-700 bg-[#0f172a]">
                   <div className="border-b border-gray-700">
                     {Object.keys(sandpackFiles).length > 0 && (
@@ -716,7 +695,6 @@ export default function ChallengeDetail() {
                   <CustomAceEditor />
                 </div>
 
-                {/* Preview */}
                 <div className="flex-1 overflow-auto bg-white">
                   <div className="px-3 py-2 text-sm bg-gray-800 text-white font-semibold border-b border-gray-700">
                     Preview
@@ -736,10 +714,8 @@ export default function ChallengeDetail() {
             </SandpackLayout>
           </Panel>
 
-          {/* --- Resize Handle Between Main and Tests --- */}
           <PanelResizeHandle className="h-2 bg-gray-800 hover:bg-[#06ffa5] transition-colors cursor-row-resize" />
 
-          {/* === Test Runner Section === */}
           <Panel defaultSize={25} minSize={10}>
             <div className="w-full border-t border-gray-700 flex flex-col h-full bg-[#0f172a]">
               <TestRunner challenge={challenge} />

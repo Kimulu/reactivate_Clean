@@ -1,0 +1,26 @@
+# 🧩 Use lightweight Node image
+FROM node:18-alpine
+
+ENV TERM=dumb
+ENV FORCE_COLOR=0
+
+# 📁 Set working directory
+WORKDIR /usr/src/app
+
+# ⚙️ Copy dependency files and install everything (includes Jest)
+COPY package*.json ./
+RUN npm install
+
+# 🧠 Copy Jest + Babel configs and setup files
+COPY babel.config.js .
+COPY jest.config.js .
+COPY setupTests.js .
+COPY __mocks__ ./__mocks__
+
+
+
+# 🧩 Do NOT change workdir here — challenge files are mounted at runtime
+# (They’ll appear in /usr/src/app/challenge inside the container)
+
+# 🚀 Default command: run Jest test script
+CMD ["npx", "jest", "--config", "/usr/src/app/jest.config.js", "--json", "--outputFile=/usr/src/app/challenge/jest-results.json", "--runInBand", "--colors=false"]
