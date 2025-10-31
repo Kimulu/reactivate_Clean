@@ -106,7 +106,7 @@ const ConnectParticles: React.FC<ConnectParticlesProps> = (props) => {
         size: {
           value: {
             min: 1,
-            max: 3, // Smaller size for subtlety
+            max: 4, // Smaller size for subtlety
           },
         },
         links: {

@@ -1,47 +1,58 @@
-/* TestOutput.css */
+/* ============================
+   TestOutput.css
+   ============================ */
 
 /*
   This is the main container for your test output.
-  It sets up the "terminal" look and feel.
+  It's styled to look like a modern dark terminal window.
 */
 .test-output-container {
-  background-color: #1e1e1e; /* A standard dark editor background */
-  color: #cccccc; /* A soft white for default text */
-  font-family: "Consolas", "Menlo", "Monaco", "Courier New", monospace; /* The best monospaced fonts */
+  background: linear-gradient(180deg, #0d0d0d 0%, #121212 100%);
+  color: #cccccc;
+  font-family: "Consolas", "Menlo", "Monaco", "Courier New", monospace;
   font-size: 14px;
   line-height: 1.6;
   padding: 16px;
-  border-radius: 6px;
+  border-radius: 8px;
   width: 100%;
   height: 100%;
-  overflow: auto; /* Add scrollbars if the content overflows */
+  overflow: auto;
   text-align: left;
+
+  /* Prevent anything from bleeding through */
+  position: relative;
+  z-index: 20;
+
+  /* A subtle border and glow for depth */
+  border: 1px solid #2c2c2c;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 /*
-  The <pre> tag is used to wrap the output.
-  We need to ensure it respects whitespace and newlines from the original source.
+  Preserve line breaks and wrapping for long output.
 */
 .test-output-container pre {
   margin: 0;
   padding: 0;
-  white-space: pre-wrap; /* This is crucial for wrapping lines and respecting <br> tags */
-  word-wrap: break-word; /* Break long words that might overflow */
+  white-space: pre-wrap; /* ✅ wraps long lines */
+  word-wrap: break-word;
+  overflow-wrap: anywhere; /* ✅ ensures no overflow */
+  max-width: 100%;
+  background-color: #1e1e1e;
+  font-size: 12px;
 }
 
 /*
-  The ansi-to-html library will generate <span> tags with inline styles
-  for colors (e.g., <span style="color: #ff0000;">).
-  This global rule ensures that these spans behave correctly within our <pre> tag.
+  Ensure colored spans from ansi-to-html behave correctly.
 */
 .test-output-container span {
   white-space: pre-wrap;
   word-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 
 /*
-  (Optional) Add a custom scrollbar to match the dark theme.
-  This works in Webkit-based browsers like Chrome, Safari, and Edge.
+  Custom scrollbar for dark theme.
 */
 .test-output-container::-webkit-scrollbar {
   width: 10px;
@@ -49,51 +60,41 @@
 }
 
 .test-output-container::-webkit-scrollbar-track {
-  background: #2a2a2a;
+  background: #1a1a1a;
   border-radius: 10px;
 }
 
 .test-output-container::-webkit-scrollbar-thumb {
-  background-color: #4f4f4f;
+  background-color: #444;
   border-radius: 10px;
-  border: 2px solid #2a2a2a;
+  border: 2px solid #1a1a1a;
 }
 
 .test-output-container::-webkit-scrollbar-thumb:hover {
-  background-color: #6a6a6a;
+  background-color: #666;
 }
 
 /*
-  This is a clever selector that targets ONLY the spans that
-  ansi-to-html created for our badges. It looks for any span
-  inside our container that has a background-color style applied to it.
+  Badge styling: affects spans with inline background-color styles (e.g., PASS / FAIL)
 */
-.testOutputContainer span[style*="background-color"] {
-  /* This creates the button shape */
-  padding: 2px 8px; /* Vertical and horizontal padding */
-  border-radius: 5px; /* This creates the rounded corners! */
+.test-output-container span[style*="background-color"] {
+  padding: 2px 8px;
+  border-radius: 5px;
   font-weight: bold;
   font-size: 12px;
-
-  /* This ensures proper alignment and spacing */
   display: inline-block;
   vertical-align: middle;
-  margin-right: 8px; /* Adds space between the badge and the filename */
-  line-height: 1.4; /* Improves vertical centering of text */
+  margin-right: 8px;
+  line-height: 1.4;
 }
 
-/*
-  This selector targets ONLY the "PASS" badge to ensure
-  the black text is readable on the green background.
-*/
-.testOutputContainer span[style*="color: #000"] {
+/* PASS badge */
+.test-output-container span[style*="color: #000"] {
   color: black !important;
 }
 
-/*
-  This selector targets ONLY the "FAIL" badge to ensure
-  the white text is readable on the red background.
-*/
-.testOutputContainer span[style*="color: #FFF"] {
+/* FAIL badge */
+.test-output-container span[style*="color: #FFF"],
+.test-output-container span[style*="color:#FFF"] {
   color: white !important;
 }

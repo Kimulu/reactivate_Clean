@@ -1,4 +1,3 @@
-// pages/challenges/index.tsx
 import { Sidebar } from "@/components/Sidebar";
 import { ChallengeCard } from "@/components/common/ChallengeCard";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -9,10 +8,11 @@ import {
   CompletedChallengeInfo,
 } from "@/utils/apiClient";
 import toast from "react-hot-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, LayoutGrid, LayoutList } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store";
-import { setAllChallenges } from "@/store/challengeSlice"; // 💡 NEW: Import setAllChallenges
+import { setAllChallenges } from "@/store/challengeSlice";
+import { Button } from "@/components/ui/Button";
 
 export default function Dashboard() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
@@ -22,14 +22,26 @@ export default function Dashboard() {
     CompletedChallengeInfo[]
   >([]);
 
-  // 💡 NEW: Access the full user object from Redux for authentication status
-  const user = useSelector((state: RootState) => state.user);
-  // We still use user.totalPoints from Redux as a dependency for re-fetching
-  const userTotalPoints = user.totalPoints;
-  const isLoggedIn = !!user.id; // 💡 NEW: A clear flag for login status
-  const dispatch = useDispatch(); // 💡 NEW: Initialize Redux dispatch
+  const [difficultyFilter, setDifficultyFilter] = useState("All");
+  const [layout, setLayout] = useState<"grid" | "list">("grid"); // 💡 New layout state
 
-  console.log("Dashboard - User Total Points from Redux:", userTotalPoints); // For debugging
+  const user = useSelector((state: RootState) => state.user);
+  const userTotalPoints = user.totalPoints;
+  const isLoggedIn = !!user.id;
+  const dispatch = useDispatch();
+
+  // 💡 Load layout preference from localStorage
+  useEffect(() => {
+    const savedLayout = localStorage.getItem("challengeLayout");
+    if (savedLayout === "grid" || savedLayout === "list") {
+      setLayout(savedLayout);
+    }
+  }, []);
+
+  // 💡 Save layout preference
+  useEffect(() => {
+    localStorage.setItem("challengeLayout", layout);
+  }, [layout]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -37,70 +49,110 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
 
-        // Fetch all challenges (public)
         const challengesData: Challenge[] = await apiClient.getChallenges();
         setChallenges(challengesData);
-        dispatch(setAllChallenges(challengesData)); // 💡 NEW: Dispatch to Redux
+        dispatch(setAllChallenges(challengesData));
 
-        // 💡 CRITICAL FIX: Only fetch completed challenges if the user is logged in
         if (isLoggedIn) {
           const completedInfo: CompletedChallengeInfo[] =
             await apiClient.getCompletedChallenges();
           setCompletedChallengesInfo(completedInfo);
-          console.log("Completed Challenge Info:", completedInfo);
         } else {
-          // If not logged in, ensure completed challenges state is empty
           setCompletedChallengesInfo([]);
-          console.log(
-            "Not logged in, skipping fetch for completed challenges."
-          );
         }
       } catch (err: any) {
         console.error("Failed to fetch dashboard data:", err);
-        // Only show error if we were actually trying to fetch protected data while logged in
-        if (isLoggedIn) {
-          setError(
-            err.message || "Failed to load challenges or completion status."
-          );
-          toast.error(
-            err.message || "Failed to load challenges or completion status."
-          );
-        } else {
-          // If not logged in, and error occurs for public challenges, still show
-          setError(err.message || "Failed to load challenges.");
-          toast.error(err.message || "Failed to load challenges.");
-        }
+        const msg =
+          err.message || "Failed to load challenges or completion status.";
+        setError(msg);
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
-    // 💡 MODIFIED: Depend on `isLoggedIn` to re-run when auth status changes
-    // `userTotalPoints` is still a good dependency for re-fetching points-related data
   }, [isLoggedIn, userTotalPoints, dispatch]);
+
+  // 💡 Filter challenges
+  const filteredChallenges = challenges.filter((challenge) => {
+    if (difficultyFilter === "All") return true;
+    return (
+      challenge.difficulty?.toLowerCase() === difficultyFilter.toLowerCase()
+    );
+  });
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-[#0f0f23] via-[#1a1a2e] to-[#0f0f23]">
         <Sidebar />
 
-        {/* Main content */}
         <div className="p-8 pt-24 md:ml-64 md:pt-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-saira text-white mb-2 ">
-              Coding Challenges
-            </h1>
-            <p className="text-white/60 text-lg font-saira">
-              Master React concepts through hands-on coding challenges
-            </p>
+          {/* ===== HEADER SECTION ===== */}
+          <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-4xl font-saira text-white mb-2">
+                Coding Challenges
+              </h1>
+              <p className="text-white/60 text-lg font-saira">
+                Master React concepts through hands-on coding challenges
+              </p>
+            </div>
+
+            {/* 🔹 Mini Navbar Controller */}
+            <div className="hidden md:flex items-center space-x-4 bg-[#1a1a2e]/60 border border-white/10 rounded-xl p-2 backdrop-blur-sm">
+              {/* Difficulty Filter */}
+              <select
+                value={difficultyFilter}
+                onChange={(e) => setDifficultyFilter(e.target.value)}
+                className="bg-transparent text-white border border-white/10 rounded-lg px-3 py-2 font-saira text-sm focus:outline-none focus:ring-1 focus:ring-[#06ffa5]"
+              >
+                <option value="All">All</option>
+                <option value="Easy" className="text-black">
+                  Easy
+                </option>
+                <option value="Medium" className="text-black">
+                  Medium
+                </option>
+                <option value="Hard" className="text-black">
+                  Hard
+                </option>
+              </select>
+
+              {/* Layout Toggle Buttons */}
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setLayout("grid")}
+                  className={`p-2 rounded-lg ${
+                    layout === "grid"
+                      ? "bg-[#4cc9f0]/20 border border-[#4cc9f0]/40"
+                      : "text-white/50"
+                  }`}
+                >
+                  <LayoutGrid size={20} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setLayout("list")}
+                  className={`p-2 rounded-lg ${
+                    layout === "list"
+                      ? "bg-[#4cc9f0]/20 border border-[#4cc9f0]/40"
+                      : "text-white/50"
+                  }`}
+                >
+                  <LayoutList size={20} />
+                </Button>
+              </div>
+            </div>
           </div>
 
-          {/* Loading, Error, and No Challenges states */}
+          {/* ===== CHALLENGE LIST ===== */}
           {loading && (
             <div className="text-center text-white py-8 flex justify-center items-center">
-              <Loader2 className="animate-spin text-[#06ffa5] w-6 h-6 mr-2" />{" "}
+              <Loader2 className="animate-spin text-[#06ffa5] w-6 h-6 mr-2" />
               Loading challenges...
             </div>
           )}
@@ -109,19 +161,29 @@ export default function Dashboard() {
             <div className="text-center text-red-500 py-8">Error: {error}</div>
           )}
 
-          {!loading && !error && challenges.length === 0 && (
+          {!loading && !error && filteredChallenges.length === 0 && (
             <div className="text-center text-gray-400 py-8">
-              No challenges found.
+              No{" "}
+              {difficultyFilter !== "All"
+                ? difficultyFilter.toLowerCase() + " "
+                : ""}
+              challenges found.
             </div>
           )}
 
-          {/* Challenges Grid */}
-          {!loading && !error && challenges.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {challenges.map((challenge) => (
+          {!loading && !error && filteredChallenges.length > 0 && (
+            <div
+              className={`${
+                layout === "grid"
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  : "flex flex-col gap-4"
+              }`}
+            >
+              {filteredChallenges.map((challenge) => (
                 <ChallengeCard
                   key={challenge.id}
                   {...challenge}
+                  layout={layout}
                   isCompleted={completedChallengesInfo.some(
                     (info) => info.challengeId === challenge.id
                   )}
@@ -131,9 +193,9 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Coming Soon Section - (Remains unchanged) */}
+          {/* ===== COMING SOON ===== */}
           <div className="mt-12">
-            <h2 className="text-2xl font-saira text-white mb-6 font-saira gradient-text">
+            <h2 className="text-2xl font-saira text-white mb-6 gradient-text">
               Coming Soon
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

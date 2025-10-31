@@ -22,10 +22,7 @@ const seedChallenges = async () => {
   await connectDB();
 
   try {
-    // 1. Clear existing challenges (useful for re-seeding during development)
-    await Challenge.deleteMany({});
-    console.log("Existing challenges cleared from DB.");
-
+    // 1. Clear existing challenges (useful for re-seeding during development
     // 2. Insert new challenges from your local data file
     // Ensure the data from localChallenges matches your Mongoose model structure.
     // Mongoose will automatically handle the conversion of plain JS objects to Mongoose documents.

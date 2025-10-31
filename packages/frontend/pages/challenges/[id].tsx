@@ -117,7 +117,6 @@ function TestRunner({ challenge }: { challenge: any }) {
   const dispatch = useDispatch();
 
   const [isRunning, setIsRunning] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
   const [testsPassed, setTestsPassed] = useState(false);
   const [hasRun, setHasRun] = useState(false);
   const [testOutput, setTestOutput] = useState("");
@@ -139,7 +138,6 @@ function TestRunner({ challenge }: { challenge: any }) {
   const runCustomTests = useCallback(async (): Promise<boolean> => {
     setIsRunning(true);
     setHasRun(true);
-    setIsOpen(true);
 
     try {
       const userSolutionFiles: Record<string, string> = {};
@@ -163,7 +161,6 @@ function TestRunner({ challenge }: { challenge: any }) {
       console.log("🧪 Backend Test Response:", response);
 
       const passed = response.passed === true;
-
       setTestOutput(response.output || "No output received from backend.");
 
       if (passed) {
@@ -242,6 +239,7 @@ function TestRunner({ challenge }: { challenge: any }) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-700 px-3 py-1 text-sm bg-gray-800">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-white">Tests</span>
@@ -279,43 +277,41 @@ function TestRunner({ challenge }: { challenge: any }) {
             </button>
           )}
         </div>
-
-        {hasRun && (
-          <button
-            onClick={() => setIsOpen((prev) => !prev)}
-            className="px-2 py-1 rounded-md text-gray-300 hover:text-white"
-          >
-            {isOpen ? "▼ Hide Output" : "▲ Show Output"}
-          </button>
-        )}
       </div>
 
-      {isOpen && (
-        <div className={`${styles.testOutputContainer} h-64`}>
-          {" "}
+      {/* ✅ Always visible test output panel */}
+      <div className={styles.testOutputContainer}>
+        {/* Render floating PASS/FAIL badge */}
+        {hasRun && (
+          <div
+            className={`${styles.testBadge} ${testsPassed ? styles.pass : ""}`}
+          ></div>
+        )}
+
+        <div className={styles.testContent}>
           {isRunning ? (
-            <div className="flex items-center space-x-2 text-gray-400">
+            <div className="flex items-center space-x-2 text-gray-400 p-4">
               <Loader2 className="animate-spin text-[#06ffa5]" size={20} />
               <span>Running tests...</span>
             </div>
           ) : testOutput ? (
-            // ✅ MODIFIED: Use dangerouslySetInnerHTML here to render the HTML.
             <pre
-              className="text-left w-full"
+              className="text-left w-full p-4 text-gray-300 whitespace-pre-wrap"
               dangerouslySetInnerHTML={{ __html: testOutput }}
             />
           ) : hasRun ? (
-            <p>
+            <p className="p-4">
               {testsPassed
                 ? "✅ All tests passed successfully."
                 : "❌ Some tests failed. Check your logic."}
             </p>
           ) : (
-            <p>Run tests to see output...</p>
+            <p className="p-4 text-gray-400">Run tests to see output...</p>
           )}
         </div>
-      )}
+      </div>
 
+      {/* Modal stays the same */}
       {isSubmitModalOpen && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-[#1a1a2e] p-8 rounded-lg shadow-2xl text-white max-w-sm w-full border border-[#06ffa5]/20">
@@ -716,10 +712,8 @@ export default function ChallengeDetail() {
 
           <PanelResizeHandle className="h-2 bg-gray-800 hover:bg-[#06ffa5] transition-colors cursor-row-resize" />
 
-          <Panel defaultSize={25} minSize={10}>
-            <div className="w-full border-t border-gray-700 flex flex-col h-full bg-[#0f172a]">
-              <TestRunner challenge={challenge} />
-            </div>
+          <Panel defaultSize={205} minSize={20}>
+            <TestRunner challenge={challenge} />
           </Panel>
         </PanelGroup>
       </SandpackProvider>
