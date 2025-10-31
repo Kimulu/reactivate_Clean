@@ -60,10 +60,15 @@ export default function Dashboard() {
         } else {
           setCompletedChallengesInfo([]);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to fetch dashboard data:", err);
         const msg =
-          err.message || "Failed to load challenges or completion status.";
+          typeof err === "object" &&
+          err !== null &&
+          "message" in err &&
+          typeof (err as { message?: unknown }).message === "string"
+            ? (err as { message: string }).message
+            : "Failed to load challenges or completion status.";
         setError(msg);
         toast.error(msg);
       } finally {
@@ -184,6 +189,12 @@ export default function Dashboard() {
                   key={challenge.id}
                   {...challenge}
                   layout={layout}
+                  difficulty={
+                    challenge.difficulty?.toLowerCase() as
+                      | "easy"
+                      | "medium"
+                      | "hard"
+                  }
                   isCompleted={completedChallengesInfo.some(
                     (info) => info.challengeId === challenge.id
                   )}

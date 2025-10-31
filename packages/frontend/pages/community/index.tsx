@@ -31,10 +31,14 @@ export default function CommunityPage() {
       setError(null);
       const data: CommunityPost[] = await apiClient.getCommunityPosts();
       setPosts(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching community posts:", err);
-      setError(err.message || "Failed to load posts.");
-      toast.error(err.message || "Failed to load posts.");
+      const message =
+        typeof err === "object" && err !== null && "message" in err
+          ? (err as { message?: string }).message
+          : undefined;
+      setError(message || "Failed to load posts.");
+      toast.error(message || "Failed to load posts.");
     } finally {
       setLoading(false);
     }

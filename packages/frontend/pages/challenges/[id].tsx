@@ -12,90 +12,14 @@ import FileTabs from "@/components/FileTabs";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
-import {
-  apiClient,
-  Challenge,
-  TestResult,
-  CustomTestRunResponse,
-} from "@/utils/apiClient";
+import { apiClient, Challenge } from "@/utils/apiClient";
 import { useDispatch } from "react-redux";
 import { updateUserTotalPoints } from "@/store/userSlice";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
-// --- START CustomTestDisplay Component ---
-function CustomTestDisplay({
-  testResults,
-  testOutput,
-  loading,
-}: {
-  testResults: TestResult[];
-  testOutput: string;
-  loading: boolean;
-}) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full bg-[#0f172a] text-gray-400">
-        <Loader2 className="animate-spin mr-2 text-[#06ffa5]" size={20} />{" "}
-        Running tests...
-      </div>
-    );
-  }
-
-  if (!testResults.length && !testOutput) {
-    return (
-      <div className="flex items-center justify-center h-full bg-[#0f172a] text-gray-400">
-        Run tests to see results.
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4 bg-[#0f172a] text-gray-200 font-mono text-sm overflow-auto h-full">
-      {/* ✅ MODIFIED: Use dangerouslySetInnerHTML to render HTML from the backend */}
-      {testOutput && (
-        <pre
-          className="whitespace-pre-wrap mb-4 bg-gray-900 p-2 rounded"
-          dangerouslySetInnerHTML={{ __html: testOutput }}
-        />
-      )}
-      {testResults.length > 0 && (
-        <div className="space-y-2">
-          {testResults.map((result, index) => (
-            <div
-              key={index}
-              className={`flex flex-col gap-1 p-2 rounded ${
-                result.status === "passed"
-                  ? "bg-green-900/30 text-green-300"
-                  : result.status === "failed"
-                  ? "bg-red-900/30 text-red-300"
-                  : "bg-gray-800/30 text-gray-400"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {result.status === "passed" && (
-                  <CheckCircle className="text-green-400" size={16} />
-                )}
-                {result.status === "failed" && (
-                  <XCircle className="text-red-400" size={16} />
-                )}
-                {result.status === "skipped" && (
-                  <Loader2 className="text-gray-400" size={16} />
-                )}
-                <span className="font-semibold">{result.title}</span>
-              </div>
-              {result.message && result.status === "failed" && (
-                <pre className="text-red-300 text-xs mt-1 bg-red-900/20 p-1 rounded whitespace-pre-wrap break-all">
-                  {result.message}
-                </pre>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-// --- END CustomTestDisplay Component ---
+// NOTE: A lightweight test display component was previously defined here but
+// was unused. To reduce bundle size and remove unused-symbol warnings, it
+// has been removed. The inline test output UI below is used instead.
 
 type SubmissionPhase =
   | "idle"
@@ -106,12 +30,19 @@ type SubmissionPhase =
   | "submission_success"
   | "submission_failed";
 
-interface TestRunnerProps {
-  challenge: Challenge;
+interface SandpackFile {
+  code?: string;
+  hidden?: boolean;
+  readOnly?: boolean;
 }
 
-function TestRunner({ challenge }: { challenge: any }) {
-  const { dispatch: sandpackDispatch, listen, sandpack } = useSandpack();
+type RunTestsResponse = {
+  passed?: boolean;
+  output?: string;
+};
+
+function TestRunner() {
+  const { listen, sandpack } = useSandpack();
   const router = useRouter();
   const { id: challengeId } = router.query;
   const dispatch = useDispatch();
@@ -133,7 +64,7 @@ function TestRunner({ challenge }: { challenge: any }) {
       }
     });
     return () => unsubscribe();
-  }, [sandpack]);
+  }, [listen]);
 
   const runCustomTests = useCallback(async (): Promise<boolean> => {
     setIsRunning(true);
@@ -142,26 +73,26 @@ function TestRunner({ challenge }: { challenge: any }) {
     try {
       const userSolutionFiles: Record<string, string> = {};
       for (const filePath in sandpack.files) {
-        const file = sandpack.files[filePath];
+        const file = sandpack.files[filePath] as unknown as SandpackFile;
         if (
           file &&
-          typeof (file as any).code === "string" &&
-          !(file as any).hidden &&
-          !(file as any).readOnly
+          typeof file.code === "string" &&
+          !file.hidden &&
+          !file.readOnly
         ) {
-          userSolutionFiles[filePath] = (file as any).code;
+          userSolutionFiles[filePath] = file.code;
         }
       }
 
-      const response = await apiClient.runUserTests(
+      const response = (await apiClient.runUserTests(
         challengeId as string,
         userSolutionFiles
-      );
+      )) as unknown as RunTestsResponse;
 
       console.log("🧪 Backend Test Response:", response);
 
-      const passed = response.passed === true;
-      setTestOutput(response.output || "No output received from backend.");
+      const passed = response?.passed === true;
+      setTestOutput(response?.output || "No output received from backend.");
 
       if (passed) {
         setTestsPassed(true);
@@ -176,11 +107,12 @@ function TestRunner({ challenge }: { challenge: any }) {
       );
 
       return passed;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error running tests:", error);
       toast.error("Error running tests");
       setTestsPassed(false);
-      setTestOutput("⚠️ Error running tests: " + error.message);
+      const message = error instanceof Error ? error.message : String(error);
+      setTestOutput("⚠️ Error running tests: " + message);
       return false;
     } finally {
       setIsRunning(false);
@@ -201,18 +133,20 @@ function TestRunner({ challenge }: { challenge: any }) {
 
           const editedFilesContent: Record<string, string> = {};
           for (const filePath in sandpack.files) {
-            const file = sandpack.files[filePath];
-            if (file && typeof (file as any).code === "string") {
-              editedFilesContent[filePath] = (file as any).code;
+            const file = sandpack.files[filePath] as unknown as SandpackFile;
+            if (file && typeof file.code === "string") {
+              editedFilesContent[filePath] = file.code;
             }
           }
 
-          const submissionResponse = await apiClient.submitChallenge(
+          const submissionResponse = (await apiClient.submitChallenge(
             challengeId as string,
             editedFilesContent
-          );
+          )) as unknown as { userPoints?: number };
 
-          dispatch(updateUserTotalPoints(submissionResponse.userPoints));
+          if (typeof submissionResponse.userPoints === "number") {
+            dispatch(updateUserTotalPoints(submissionResponse.userPoints));
+          }
           console.log(
             "✅ Challenge submitted. User points:",
             submissionResponse.userPoints
@@ -225,7 +159,7 @@ function TestRunner({ challenge }: { challenge: any }) {
             setIsSubmitModalOpen(false);
             router.push("/challenges");
           }, 1500);
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Submission error:", error);
           setSubmissionPhase("submission_failed");
           toast.error("Failed to submit challenge.");
@@ -446,14 +380,21 @@ export default function ChallengeDetail() {
               setChallenge({ ...fetchedChallenge, files: mergedFiles });
               console.log("✅ Loaded user's previous submission");
             }
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.warn("⚠️ Error fetching submission:", err);
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching challenge details:", err);
-        setError(err.message || "Failed to load challenge details.");
-        toast.error(err.message || "Failed to load challenge.");
+        const message =
+          typeof err === "object" &&
+          err !== null &&
+          "message" in err &&
+          typeof (err as { message?: unknown }).message === "string"
+            ? (err as { message: string }).message
+            : "Failed to load challenge details.";
+        setError(message);
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -713,7 +654,7 @@ export default function ChallengeDetail() {
           <PanelResizeHandle className="h-2 bg-gray-800 hover:bg-[#06ffa5] transition-colors cursor-row-resize" />
 
           <Panel defaultSize={205} minSize={20}>
-            <TestRunner challenge={challenge} />
+            <TestRunner />
           </Panel>
         </PanelGroup>
       </SandpackProvider>

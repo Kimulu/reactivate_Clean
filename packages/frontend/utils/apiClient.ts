@@ -38,7 +38,7 @@ export interface UserInfo {
   username: string;
   email: string;
   totalPoints: number;
-  createdAt: string | null;
+  createdAt?: string | null;
 }
 
 export interface CompletedChallengeInfo {

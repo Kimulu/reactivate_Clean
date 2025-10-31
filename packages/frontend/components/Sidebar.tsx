@@ -247,9 +247,10 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
-  // Close mobile menu on route change
+  // Close mobile menu on route change. We avoid reading `isOpen` here
+  // to keep the dependency array stable and satisfy react-hooks lint.
   useEffect(() => {
-    if (isOpen) setIsOpen(false);
+    setIsOpen(false);
   }, [pathname]);
 
   return (

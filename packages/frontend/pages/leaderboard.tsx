@@ -19,9 +19,16 @@ export default function LeaderboardPage() {
         setError(null);
         const data: LeaderboardEntry[] = await apiClient.getLeaderboard();
         setLeaderboard(data);
-      } catch (err: any) {
-        setError(err.message || "Failed to load leaderboard.");
-        toast.error(err.message || "Failed to load leaderboard.");
+      } catch (err: unknown) {
+        const message =
+          typeof err === "object" &&
+          err !== null &&
+          "message" in err &&
+          typeof (err as { message?: unknown }).message === "string"
+            ? (err as { message: string }).message
+            : "Failed to load leaderboard.";
+        setError(message);
+        toast.error(message);
       } finally {
         setLoading(false);
       }

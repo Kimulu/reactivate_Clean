@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
+import { UserInfo } from "@/utils/apiClient";
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserInfo | null>(null);
 
   useEffect(() => {
     // Replace with your auth system’s current user ID
     const userId = "YOUR_USER_ID";
     fetch(`/api/user/${userId}`)
       .then((res) => res.json())
-      .then((data) => setUser(data));
+      .then((data: UserInfo) => setUser(data));
   }, []);
 
   if (!user) return <p className="text-white p-6">Loading profile...</p>;
@@ -21,7 +22,7 @@ export default function ProfilePage() {
           <strong>Username:</strong> {user.username}
         </p>
         <p className="text-white/80">
-          <strong>ID:</strong> {user._id}
+          <strong>ID:</strong> {user.id}
         </p>
       </div>
     </div>

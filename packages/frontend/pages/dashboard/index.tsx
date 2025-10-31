@@ -63,8 +63,15 @@ export default function DashboardPage() {
         } else {
           setLastChallengeAttemptedTitle("No challenges attempted yet.");
         }
-      } catch (err: any) {
-        toast.error(err.message || "Failed to load dashboard metrics.");
+      } catch (err: unknown) {
+        const msg =
+          typeof err === "object" &&
+          err !== null &&
+          "message" in err &&
+          typeof (err as { message?: unknown }).message === "string"
+            ? (err as { message: string }).message
+            : "Failed to load dashboard metrics.";
+        toast.error(msg);
       } finally {
         setIsDataLoading(false);
       }
@@ -127,7 +134,7 @@ export default function DashboardPage() {
                     onClick={handleContinueSession}
                     className="flex items-center justify-center space-x-2 rounded-lg bg-[#06ffa5] px-6 py-3 font-saira text-[#0f0f23] transition-colors duration-200 hover:bg-[#04cc83]"
                   >
-                    <span>Let's Go</span>
+                    <span>Let&apos;s Go</span>
                     <ArrowRight size={20} />
                   </button>
                 </div>

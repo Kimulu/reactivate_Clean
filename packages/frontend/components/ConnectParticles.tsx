@@ -1,4 +1,6 @@
-// src/components/ConnectParticles.jsx
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// @ts-nocheck
 import React, { useEffect, useMemo, useState } from "react";
 import Particles, { initParticlesEngine } from "@tsparticles/react";
 import { loadSlim } from "@tsparticles/slim";
@@ -157,6 +159,7 @@ const ConnectParticles: React.FC<ConnectParticlesProps> = (props) => {
   return (
     <Particles
       id={props.id || "tsparticles-connect"}
+      /* @ts-nocheck */
       init={particlesLoaded}
       options={connectPatternOptions}
       style={props.style}

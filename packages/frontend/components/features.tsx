@@ -2,7 +2,6 @@
 
 import { motion } from "motion/react";
 import { Code2, TrendingUp, Users, Play } from "lucide-react";
-import { useState } from "react";
 
 export function Features() {
   const features = [

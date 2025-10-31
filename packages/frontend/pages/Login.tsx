@@ -122,10 +122,17 @@ export default function LoginPage() {
       } else {
         toast.error("Login failed: Invalid server response.");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Login Error:", err);
-      setApiError(err.message || "Login failed");
-      toast.error(err.message || "Login failed");
+      const message =
+        typeof err === "object" &&
+        err !== null &&
+        "message" in err &&
+        typeof (err as { message?: unknown }).message === "string"
+          ? (err as { message: string }).message
+          : "Login failed";
+      setApiError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }

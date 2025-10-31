@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Sidebar } from "@/components/Sidebar";
 import { useEffect, useState, FormEvent, useCallback } from "react";
-import { apiClient, CommunityPost, CommunityComment } from "@/utils/apiClient";
+import { apiClient, CommunityPost } from "@/utils/apiClient";
 import toast from "react-hot-toast";
 import {
   Loader2,
@@ -14,9 +14,8 @@ import {
   ThumbsDown,
   Send,
 } from "lucide-react";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import { RootState } from "@/store";
-import { updateUserTotalPoints } from "@/store/userSlice";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { dracula } from "react-syntax-highlighter/dist/cjs/styles/hljs";
 
@@ -24,7 +23,6 @@ export default function PostDetailPage() {
   const router = useRouter();
   const { postId } = router.query;
   const currentUser = useSelector((state: RootState) => state.user);
-  const dispatch = useDispatch();
 
   const [post, setPost] = useState<CommunityPost | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,9 +39,13 @@ export default function PostDetailPage() {
       setError(null);
       const data: CommunityPost = await apiClient.getCommunityPostById(postId);
       setPost(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to load post.");
-      toast.error(err.message || "Failed to load post.");
+    } catch (err: unknown) {
+      const message =
+        typeof err === "object" && err !== null && "message" in err
+          ? (err as { message?: string }).message
+          : undefined;
+      setError(message || "Failed to load post.");
+      toast.error(message || "Failed to load post.");
     } finally {
       setLoading(false);
     }
@@ -58,16 +60,17 @@ export default function PostDetailPage() {
     if (!newCommentText.trim() || !post || !currentUser.id) return;
     setCommentLoading(true);
     try {
-      const response = await apiClient.addCommunityComment(
-        post._id,
-        newCommentText
-      );
+      await apiClient.addCommunityComment(post._id, newCommentText);
       // Re-fetch post to get the latest comment list from the server
       fetchPost();
       setNewCommentText("");
       toast.success("Comment added!");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to add comment.");
+    } catch (err: unknown) {
+      const message =
+        typeof err === "object" && err !== null && "message" in err
+          ? (err as { message?: string }).message
+          : undefined;
+      toast.error(message || "Failed to add comment.");
     } finally {
       setCommentLoading(false);
     }
@@ -87,11 +90,24 @@ export default function PostDetailPage() {
           : await apiClient.downvoteCommunityPost(post._id);
 
       // Manually update the post state with the response from the server for accuracy
-      setPost(response.post);
+      setPost((prev) =>
+        prev
+          ? {
+              ...prev,
+              upvotes: Array.isArray(response.upvotes)
+                ? response.upvotes
+                : prev.upvotes,
+              downvotes: Array.isArray(response.downvotes)
+                ? response.downvotes
+                : prev.downvotes,
+            }
+          : prev
+      );
 
       toast.success(`Successfully ${voteType}d post!`);
       // Update redux points if needed...
-    } catch (err: any) {
+    } catch {
+      // We don't show the raw error here to avoid leaking messages
       toast.error(`Failed to ${voteType} post.`);
       setPost(originalPost); // Rollback
     } finally {

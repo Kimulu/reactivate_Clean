@@ -131,10 +131,15 @@ const Signup = () => {
 
       toast.success("Signed up successfully! 🎉");
       router.push("/challenges");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("An error occurred during signup:", error);
       const errorMessage =
-        error.message || "An error occurred. Please try again later.";
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof (error as { message?: unknown }).message === "string"
+          ? (error as { message: string }).message
+          : "An error occurred. Please try again later.";
       setApiError(errorMessage);
       toast.error(errorMessage);
     } finally {

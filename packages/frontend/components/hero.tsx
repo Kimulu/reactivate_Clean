@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"; // Using standard framer-motion
 import { Zap, Code } from "lucide-react";
+import Link from "next/link";
 
 // Fix 2: Changed path alias to a relative import for ConnectParticles
 import ConnectParticles from "./ConnectParticles";
@@ -105,18 +106,18 @@ export function Hero() {
             transition={{ delay: 0.9, duration: 1 }}
           >
             {/* Fix 1: Replaced Link component with standard <a> tag */}
-            <a href="/Signup">
+            <Link href="/Signup">
               <button className="font-saira px-8 py-3 sm:py-4 sm:px-10 text-base sm:text-lg font-semibold border border-[#06ffa5] text-white/90 rounded-lg hover:bg-[#06ffa5] hover:text-black transition-colors duration-300 w-48 sm:w-auto">
                 Join Now
               </button>
-            </a>
+            </Link>
 
             {/* Fix 1: Replaced Link component with standard <a> tag */}
-            <a href="/Login">
+            <Link href="/Login">
               <button className=" font-saira px-8 py-3 sm:py-4 sm:px-10 text-base sm:text-lg font-semibold border border-[#4cc9f0] text-white/90 rounded-lg hover:bg-[#4cc9f0] hover:text-black transition-colors duration-300 w-48 sm:w-auto">
                 Explore Challenges
               </button>
-            </a>
+            </Link>
           </motion.div>
         </div>
       </section>

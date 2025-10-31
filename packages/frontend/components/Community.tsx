@@ -1,13 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import {
-  MessageCircle,
-  BookOpen,
-  Award,
-  ArrowRight,
-  UserCircle2,
-} from "lucide-react";
+import { MessageCircle, BookOpen, ArrowRight, UserCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 export function Community() {
