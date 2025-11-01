@@ -144,7 +144,7 @@ export const apiClient = {
     username: string,
     password: string
   ): Promise<{ token: string; user: UserInfo }> => {
-    const res = await fetch(`${BASE_URL}/api/login`, {
+    const res = await fetch(`${BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -161,7 +161,7 @@ export const apiClient = {
     email: string,
     password: string
   ): Promise<{ token: string; user: UserInfo }> => {
-    const res = await fetch(`${BASE_URL}/api/signup`, {
+    const res = await fetch(`${BASE_URL}/api/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, email, password }),
