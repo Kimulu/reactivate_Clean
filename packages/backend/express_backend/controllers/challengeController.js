@@ -2,21 +2,20 @@
 const axios = require("axios");
 const Challenge = require("../models/Challenge");
 const UserChallengeSubmission = require("../models/UserChallengeSubmission");
-const User = require("../models/User"); // 💡 NEW: Import User model to update totalPoints
-const testRunnerService = require("../utils/testRunnerService");
+const User = require("../models/User");
+
 // @route GET /api/challenges
 // @desc Get all challenges
 // @access Public
 exports.getChallenges = async (req, res) => {
   try {
-    // 💡 MODIFIED: .find({}) will now automatically include the 'points' field
     const challenges = await Challenge.find({});
     const formattedChallenges = challenges.map((challenge) =>
       challenge.toObject()
     );
     res.status(200).json(formattedChallenges);
   } catch (err) {
-    console.error("Error fetching challenges:", err.message);
+    console.error("❌ Error fetching challenges:", err.message);
     res.status(500).json({ message: "Server error fetching challenges" });
   }
 };
@@ -26,7 +25,6 @@ exports.getChallenges = async (req, res) => {
 // @access Public
 exports.getChallengeById = async (req, res) => {
   try {
-    // 💡 MODIFIED: .findOne({}) will now automatically include the 'points' field
     const challenge = await Challenge.findOne({ id: req.params.id });
 
     if (!challenge) {
@@ -35,7 +33,7 @@ exports.getChallengeById = async (req, res) => {
 
     res.status(200).json(challenge.toObject());
   } catch (err) {
-    console.error(`Error fetching challenge ${req.params.id}:`, err.message);
+    console.error(`❌ Error fetching challenge ${req.params.id}:`, err.message);
     res.status(500).json({ message: "Server error fetching challenge" });
   }
 };
@@ -44,27 +42,21 @@ exports.getChallengeById = async (req, res) => {
 // @desc Submit code for a challenge
 // @access Private (requires auth)
 exports.submitChallenge = async (req, res) => {
-  const { challengeId } = req.params; // Get custom challenge ID from URL
-  const { submittedCode } = req.body; // User's submitted code (object of files)
-  const userId = req.user._id; // User ID from auth middleware
+  const { challengeId } = req.params;
+  const { submittedCode } = req.body;
+  const userId = req.user._id;
 
   if (!submittedCode || Object.keys(submittedCode).length === 0) {
     return res.status(400).json({ message: "Submitted code is required." });
   }
 
   try {
-    // 1. Find the challenge by its custom ID to get its MongoDB _id AND points
     const challenge = await Challenge.findOne({ id: challengeId });
     if (!challenge) {
       return res.status(404).json({ message: "Challenge not found" });
     }
 
-    // Determine points to award. This challenge's points will be used.
     const pointsToAward = challenge.points;
-    let oldPointsEarned = 0; // To track if points were previously earned for this challenge
-
-    // 2. Create or Update the UserChallengeSubmission
-    // We need to check if a submission already exists to correctly update totalPoints
     const existingSubmission = await UserChallengeSubmission.findOne({
       user: userId,
       challenge: challenge._id,
@@ -73,48 +65,41 @@ exports.submitChallenge = async (req, res) => {
     const submission = await UserChallengeSubmission.findOneAndUpdate(
       { user: userId, challenge: challenge._id },
       {
-        submittedCode: submittedCode,
+        submittedCode,
         completed: true,
         submittedAt: Date.now(),
         challengeId: challenge.id,
-        pointsEarned: pointsToAward, // 💡 NEW: Set pointsEarned
+        pointsEarned: pointsToAward,
       },
-      {
-        new: true,
-        upsert: true,
-        setDefaultsOnInsert: true,
-      }
+      { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
-    // 💡 NEW: Update user's total points only if this is a new submission or points changed
+    // 🧩 Update total points logic
     if (existingSubmission && !existingSubmission.completed) {
-      // If previous submission existed but wasn't completed, award points
       await User.findByIdAndUpdate(userId, {
         $inc: { totalPoints: pointsToAward },
       });
       console.log(
-        `User ${userId} earned ${pointsToAward} for completing ${challengeId}.`
+        `🏅 User ${userId} earned ${pointsToAward} pts for completing ${challengeId}`
       );
     } else if (!existingSubmission) {
-      // If no existing submission, it's a new completion, award points
       await User.findByIdAndUpdate(userId, {
         $inc: { totalPoints: pointsToAward },
       });
       console.log(
-        `User ${userId} earned ${pointsToAward} for new completion of ${challengeId}.`
+        `🎉 User ${userId} earned ${pointsToAward} pts for new completion ${challengeId}`
       );
     }
-    // If it was already completed and points are the same, no change to totalPoints.
-    // If you want to award points for re-submission even if already completed, modify logic here.
+
+    const updatedUser = await User.findById(userId).select("totalPoints");
 
     res.status(200).json({
       message: "Challenge submitted and marked as completed successfully!",
       submission,
-      userPoints: (await User.findById(userId).select("totalPoints"))
-        ?.totalPoints, // 💡 NEW: Return updated totalPoints
+      userPoints: updatedUser?.totalPoints,
     });
   } catch (err) {
-    console.error("Error submitting challenge:", err.message);
+    console.error("❌ Error submitting challenge:", err.message);
     res
       .status(500)
       .json({ message: "Server error during challenge submission" });
@@ -131,64 +116,73 @@ exports.getCompletedChallenges = async (req, res) => {
     const completedSubmissions = await UserChallengeSubmission.find({
       user: userId,
       completed: true,
-    }).select("challengeId pointsEarned -_id"); // 💡 MODIFIED: Select pointsEarned as well
+    }).select("challengeId pointsEarned -_id");
 
-    // Extract challengeId strings and points
     const completedChallengesInfo = completedSubmissions.map((sub) => ({
       challengeId: sub.challengeId,
       pointsEarned: sub.pointsEarned,
     }));
 
-    res.status(200).json(completedChallengesInfo); // 💡 MODIFIED: Return object with points
+    res.status(200).json(completedChallengesInfo);
   } catch (err) {
-    console.error("Error fetching completed challenges:", err.message);
+    console.error("❌ Error fetching completed challenges:", err.message);
     res
       .status(500)
       .json({ message: "Server error fetching completed challenges" });
   }
 };
+
 // @route POST /api/challenges/run-tests
 // @desc Run tests for a challenge submission by forwarding to the test runner service
 // @access Private (requires auth)
 exports.runChallengeTests = async (req, res) => {
   try {
-    // ADD THESE TWO LINES FOR DEBUGGING
     console.log(
-      "Received request body from frontend:",
+      "⚙️ Received request body from frontend:",
       JSON.stringify(req.body, null, 2)
     );
-    console.log("Does body have files?", !!req.body.userSolutionFiles);
+    console.log("📦 Does body have files?", !!req.body.userSolutionFiles);
+
     const { challengeId, userSolutionFiles, testFileContent } = req.body;
 
-    // Check for the RUNNER_URL environment variable
     if (!process.env.RUNNER_URL) {
       throw new Error("RUNNER_URL environment variable is not set.");
     }
 
-    console.log(`Forwarding test run request to: ${process.env.RUNNER_URL}`);
+    const runnerEndpoint = `${process.env.RUNNER_URL}/run-tests`;
+    console.log(`🚀 Forwarding test run request to: ${runnerEndpoint}`);
 
-    // Use axios to make a POST request to the runner service's API endpoint
-    const response = await axios.post(
-      `${process.env.RUNNER_URL}/run-tests`, // The new endpoint
-      {
-        challengeId,
-        userSolutionFiles,
-        testFileContent,
-      }
-    );
+    // 🔥 Send the request to the runner
+    const response = await axios.post(runnerEndpoint, {
+      challengeId,
+      userSolutionFiles,
+      testFileContent,
+    });
 
-    // The runner service's response is already in the correct format,
-    // so we just send it back to the frontend.
+    console.log("✅ Runner response received:", response.data);
+
     res.status(200).json(response.data);
   } catch (error) {
-    console.error(
-      "Error forwarding test run to runner service:",
-      error.message
-    );
-    // If the runner service returns an error, pass it along
+    console.error("❌ Error forwarding test run to runner service:", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
+    // 🧠 Handle different cases
     if (error.response) {
-      return res.status(error.response.status).json(error.response.data);
+      const status = error.response.status;
+      const data = error.response.data || {};
+      const message =
+        status === 404
+          ? "Runner service not found — check RUNNER_URL or route path."
+          : status === 400
+          ? "Bad request sent to runner service."
+          : "Runner service error.";
+
+      return res.status(status).json({ error: message, details: data });
     }
+
     res
       .status(500)
       .json({ error: "Failed to connect to the test runner service." });
