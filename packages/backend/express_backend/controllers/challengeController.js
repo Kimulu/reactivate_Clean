@@ -153,7 +153,7 @@ exports.runChallengeTests = async (req, res) => {
       throw new Error("RUNNER_URL environment variable is not set.");
     }
 
-    const runnerEndpoint = `${process.env.RUNNER_URL}/api/run-tests`;
+    const runnerEndpoint = `${process.env.RUNNER_URL}/api/runner/run-tests`;
     console.log(`🚀 Forwarding test run request to: ${runnerEndpoint}`);
 
     // 3. Create the payload for the runner service.
