@@ -152,6 +152,12 @@ exports.getCompletedChallenges = async (req, res) => {
 // @access Private (requires auth)
 exports.runChallengeTests = async (req, res) => {
   try {
+    // ADD THESE TWO LINES FOR DEBUGGING
+    console.log(
+      "Received request body from frontend:",
+      JSON.stringify(req.body, null, 2)
+    );
+    console.log("Does body have files?", !!req.body.userSolutionFiles);
     const { challengeId, userSolutionFiles, testFileContent } = req.body;
 
     // Check for the RUNNER_URL environment variable
