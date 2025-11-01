@@ -94,7 +94,7 @@ function TestRunner({ challenge }: TestRunnerProps) {
       const response = (await apiClient.runUserTests(
         challengeId as string,
         userSolutionFiles,
-        challenge.testFileContent // <-- PASS THE TEST CONTENT HERE
+        challenge.testCode // <-- PASS THE TEST CONTENT HERE
       )) as unknown as RunTestsResponse;
 
       console.log("🧪 Backend Test Response:", response);
