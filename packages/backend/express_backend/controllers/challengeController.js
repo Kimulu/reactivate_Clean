@@ -1,5 +1,5 @@
 // controllers/challengeController.js
-
+const axios = require("axios");
 const Challenge = require("../models/Challenge");
 const UserChallengeSubmission = require("../models/UserChallengeSubmission");
 const User = require("../models/User"); // 💡 NEW: Import User model to update totalPoints
@@ -147,45 +147,44 @@ exports.getCompletedChallenges = async (req, res) => {
       .json({ message: "Server error fetching completed challenges" });
   }
 };
-
+// @route POST /api/challenges/run-tests
+// @desc Run tests for a challenge submission by forwarding to the test runner service
+// @access Private (requires auth)
 exports.runChallengeTests = async (req, res) => {
-  const { challengeId } = req.params;
-  // userSolutionFiles will be an object like { 'index.js': 'console.log("hello");' }
-  const { userSolutionFiles } = req.body;
-
-  if (!userSolutionFiles || Object.keys(userSolutionFiles).length === 0) {
-    return res
-      .status(400)
-      .json({ message: "User solution files are required." });
-  }
-
   try {
-    const challenge = await Challenge.findOne({ id: challengeId }).select(
-      "testCode"
-    ); // 💡 Ensure your Challenge model has a 'testCode' field
-    if (!challenge) {
-      return res.status(404).json({ message: "Challenge not found" });
-    }
-    if (!challenge.testCode) {
-      return res
-        .status(400)
-        .json({ message: "Challenge does not have associated test code." });
+    const { challengeId, userSolutionFiles, testFileContent } = req.body;
+
+    // Check for the RUNNER_URL environment variable
+    if (!process.env.RUNNER_URL) {
+      throw new Error("RUNNER_URL environment variable is not set.");
     }
 
-    // Call the custom test runner service
-    const results = await testRunnerService.runTests(
-      challengeId,
-      userSolutionFiles,
-      challenge.testCode,
-      true
+    console.log(`Forwarding test run request to: ${process.env.RUNNER_URL}`);
+
+    // Use axios to make a POST request to the runner service's API endpoint
+    const response = await axios.post(
+      `${process.env.RUNNER_URL}/api/run-tests`, // The new endpoint
+      {
+        challengeId,
+        userSolutionFiles,
+        testFileContent,
+      }
     );
 
-    res.status(200).json(results);
+    // The runner service's response is already in the correct format,
+    // so we just send it back to the frontend.
+    res.status(200).json(response.data);
   } catch (error) {
-    console.error("Error running challenge tests:", error);
-    res.status(500).json({
-      message: "Server error during test execution.",
-      error: error.message,
-    });
+    console.error(
+      "Error forwarding test run to runner service:",
+      error.message
+    );
+    // If the runner service returns an error, pass it along
+    if (error.response) {
+      return res.status(error.response.status).json(error.response.data);
+    }
+    res
+      .status(500)
+      .json({ error: "Failed to connect to the test runner service." });
   }
 };

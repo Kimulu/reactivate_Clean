@@ -1,22 +1,23 @@
-const { spawn } = require("child_process");
+// packages/backend/express_backend/utils/testRunnerService.js
+
+// NEW: Import execSync to run commands directly
+const { execSync } = require("child_process");
 const fs = require("fs").promises;
 const path = require("path");
 const fsExtra = require("fs-extra");
 const { v4: uuidv4 } = require("uuid");
 const cliProgress = require("cli-progress");
 const chalk = require("chalk");
-// 1. Import the new library
 const AnsiToHtml = require("ansi-to-html");
 
-// 2. Create a new converter instance with some sensible defaults
 const converter = new AnsiToHtml({
-  newline: true, // Use <br/> for newlines
-  escapeXML: true, // Escape XML characters
-  fg: "#FFF", // Default foreground color
-  bg: "#1e1e1e", // Default background color (matches terminal styling)
+  newline: true,
+  escapeXML: true,
+  fg: "#FFF",
+  bg: "#1e1e1e",
 });
 
-// The parseJestOutput function generates the rich ANSI text string. It is correct as is.
+// The parseJestOutput function is excellent and remains unchanged.
 const parseJestOutput = async (jsonOutput, colorize = true) => {
   try {
     const data = JSON.parse(jsonOutput);
@@ -35,7 +36,6 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
       cliProgress.Presets.shades_classic
     );
 
-    // Note: The progress bar will only appear in the server's console, not the final HTML.
     if (totalTests > 0 && colorize && process.stdout.isTTY) {
       progressBar.start(totalTests, 0);
     }
@@ -47,8 +47,8 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
       );
       const headerLabel = hasFailures ? " FAIL " : " PASS ";
       const badge = hasFailures
-        ? chalk.bgRed.white.bold(` FAIL `) // Simple text with spaces for padding
-        : chalk.bgGreen.black.bold(` PASS `); // Simple text with spaces for padding
+        ? chalk.bgRed.white.bold(` FAIL `)
+        : chalk.bgGreen.black.bold(` PASS `);
 
       lines.push(
         colorize
@@ -123,21 +123,26 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
   }
 };
 
-// Docker-based Secure Jest Runner
+// ===================================================================
+// === THIS IS THE REWRITTEN FUNCTION FOR THE RENDER DEPLOYMENT ===
+// ===================================================================
 exports.runTests = async (
   challengeId,
   userSolutionFiles,
   testFileContent,
   colorize = true
 ) => {
+  // Create a unique temporary directory for this test run
   const tempDir = path.join(__dirname, "..", "temp_challenge_runs", uuidv4());
   let result = {
     passed: false,
-    output: "Unexpected error.",
+    output: "Unexpected error during test execution.",
     detailedResults: [],
   };
+  let jsonOutput = "";
 
   try {
+    // 1. Set up the temporary directory with user files and test files
     await fs.mkdir(tempDir, { recursive: true });
 
     for (const filePath in userSolutionFiles) {
@@ -154,59 +159,48 @@ exports.runTests = async (
     const testPath = path.join(tempDir, "solution.test.js");
     await fs.writeFile(testPath, adjustedTestContent);
 
-    const dockerResult = await new Promise((resolve, reject) => {
-      const isWindows = process.platform === "win32";
-      const currentUser = isWindows
-        ? {}
-        : { user: `${process.getuid()}:${process.getgid()}` };
-      const args = [
-        "run",
-        "--rm",
-        ...(isWindows ? [] : ["--user", currentUser.user]),
-        "--memory=512m",
-        "--cpus=1",
-        "--network=none",
-        "-v",
-        `${tempDir}:/usr/src/app/challenge`,
-        "reactivate-jest-runner",
-      ];
-      const dockerProcess = spawn("docker", args, { shell: true });
-      let stdout = "";
-      let stderr = "";
-      dockerProcess.stdout.on("data", (d) => (stdout += d.toString()));
-      dockerProcess.stderr.on("data", (d) => (stderr += d.toString()));
-      dockerProcess.on("error", reject);
-      dockerProcess.on("close", async (code) => {
-        try {
-          const resultsPath = path.join(tempDir, "jest-results.json");
-          const jsonOutput = await fs.readFile(resultsPath, "utf8");
-          resolve({ stdout: jsonOutput, stderr });
-        } catch (err) {
-          resolve({ stdout, stderr: stderr || err.message });
-        }
+    // 2. Define the path for Jest's JSON results
+    const resultsPath = path.join(tempDir, "jest-results.json");
+
+    // 3. Execute Jest directly using a child process. NO MORE DOCKER!
+    try {
+      // We run jest from within the temp directory (using `cwd`)
+      // This makes all the file imports like `require('./component.js')` work correctly.
+      execSync(`npx jest --json --outputFile=${resultsPath} --runInBand`, {
+        cwd: tempDir, // Set the current working directory for the command
+        stdio: "pipe", // Use 'pipe' to suppress console output from Jest
       });
-    });
+    } catch (error) {
+      // execSync throws an error if the command returns a non-zero exit code.
+      // For Jest, this happens when tests fail, which is normal.
+      // We can safely ignore the error here because we will read the results
+      // from the JSON file regardless of whether the tests passed or failed.
+      console.log("Jest finished with failed tests, which is expected.");
+    }
 
-    // Generate the rich, colorized ANSI output string.
-    const parsed = await parseJestOutput(dockerResult.stdout, colorize);
+    // 4. Read the results file that Jest created
+    jsonOutput = await fs.readFile(resultsPath, "utf8");
 
-    // 3. THE FINAL STEP: Convert the ANSI string to HTML and prepare the result.
+    // 5. Parse the JSON output and convert to HTML
+    const parsed = await parseJestOutput(jsonOutput, colorize);
     result = {
       passed: parsed.passed,
-      // The output is now the HTML version of the ANSI string.
       output: converter.toHtml(parsed.output),
       detailedResults: parsed.detailedResults,
     };
   } catch (error) {
-    console.error("💥 Error during Docker test execution:", error);
+    console.error("💥 Error during test execution:", error);
     result = {
       passed: false,
-      output: `Test runner internal error: ${error.message}`,
-      detailedResults: [
-        { title: "Runner Error", status: "failed", message: error.message },
-      ],
+      output: converter.toHtml(
+        `Test runner internal error: ${
+          error.message
+        }\n\nSTDOUT:\n${error.stdout?.toString()}\n\nSTDERR:\n${error.stderr?.toString()}`
+      ),
+      detailedResults: [],
     };
   } finally {
+    // 6. Clean up the temporary directory
     try {
       await fsExtra.remove(tempDir);
     } catch (cleanupError) {
