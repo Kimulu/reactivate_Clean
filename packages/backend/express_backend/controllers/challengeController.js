@@ -169,7 +169,7 @@ exports.runChallengeTests = async (req, res) => {
 
     // Use axios to make a POST request to the runner service's API endpoint
     const response = await axios.post(
-      `${process.env.RUNNER_URL}/api/run-tests`, // The new endpoint
+      `${process.env.RUNNER_URL}/run-tests`, // The new endpoint
       {
         challengeId,
         userSolutionFiles,
