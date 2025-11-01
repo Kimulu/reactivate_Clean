@@ -14,7 +14,8 @@ export interface Challenge {
   difficulty: string;
   instructions: string;
   files: { [key: string]: ChallengeFile };
-  testCode: string;
+  testFileContent: string; // <-- ADD THIS LINE
+  testCode: string; // <-- You can keep this or remove it if it's no longer used
   points: number;
   createdAt?: string;
   updatedAt?: string;
@@ -228,11 +229,12 @@ export const apiClient = {
 
   runUserTests: async (
     challengeId: string,
-    userSolutionFiles: { [path: string]: string } // An object like { 'index.js': 'user code' }
+    userSolutionFiles: { [path: string]: string },
+    testFileContent: string // <-- Add this new argument
   ): Promise<CustomTestRunResponse> => {
     const res = await authFetch(`/api/challenges/${challengeId}/run-tests`, {
       method: "POST",
-      body: JSON.stringify({ userSolutionFiles }),
+      body: JSON.stringify({ userSolutionFiles, testFileContent }), // <-- Add testFileContent here
     });
     return res.json();
   },

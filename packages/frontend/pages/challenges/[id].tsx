@@ -41,7 +41,13 @@ type RunTestsResponse = {
   output?: string;
 };
 
-function TestRunner() {
+// 1. DEFINE THE PROPS FOR THE COMPONENT
+interface TestRunnerProps {
+  challenge: Challenge; // It will receive the full challenge object
+}
+
+// 2. UPDATE THE FUNCTION SIGNATURE TO ACCEPT THE PROP
+function TestRunner({ challenge }: TestRunnerProps) {
   const { listen, sandpack } = useSandpack();
   const router = useRouter();
   const { id: challengeId } = router.query;
@@ -84,9 +90,11 @@ function TestRunner() {
         }
       }
 
+      // This assumes you have the 'challenge' object available in this component's scope
       const response = (await apiClient.runUserTests(
         challengeId as string,
-        userSolutionFiles
+        userSolutionFiles,
+        challenge.testFileContent // <-- PASS THE TEST CONTENT HERE
       )) as unknown as RunTestsResponse;
 
       console.log("🧪 Backend Test Response:", response);
@@ -117,7 +125,7 @@ function TestRunner() {
     } finally {
       setIsRunning(false);
     }
-  }, [sandpack.files, challengeId]);
+  }, [sandpack.files, challengeId, challenge]);
 
   const handleRunTests = () => runCustomTests();
 
@@ -654,7 +662,7 @@ export default function ChallengeDetail() {
           <PanelResizeHandle className="h-2 bg-gray-800 hover:bg-[#06ffa5] transition-colors cursor-row-resize" />
 
           <Panel defaultSize={205} minSize={20}>
-            <TestRunner />
+            {challenge && <TestRunner challenge={challenge} />}
           </Panel>
         </PanelGroup>
       </SandpackProvider>
