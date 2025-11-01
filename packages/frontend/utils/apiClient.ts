@@ -232,7 +232,7 @@ export const apiClient = {
     userSolutionFiles: { [path: string]: string },
     testFileContent: string // <-- Add this new argument
   ): Promise<CustomTestRunResponse> => {
-    const res = await authFetch(`/api/challenges/${challengeId}/run-tests`, {
+    const res = await authFetch(`/api/challenges/run-tests`, {
       method: "POST",
       body: JSON.stringify({ userSolutionFiles, testFileContent }), // <-- Add testFileContent here
     });
