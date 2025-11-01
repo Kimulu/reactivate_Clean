@@ -143,7 +143,8 @@ exports.runChallengeTests = async (req, res) => {
     );
     console.log("📦 Does body have files?", !!req.body.userSolutionFiles);
 
-    const { challengeId, userSolutionFiles, testFileContent } = req.body;
+    const { userSolutionFiles, testFileContent } = req.body;
+    const { challengeId } = req.params; // Get the ID from the URL parameters
 
     if (!process.env.RUNNER_URL) {
       throw new Error("RUNNER_URL environment variable is not set.");
