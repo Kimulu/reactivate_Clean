@@ -141,11 +141,14 @@ exports.runChallengeTests = async (req, res) => {
       "⚙️ Received request body from frontend:",
       JSON.stringify(req.body, null, 2)
     );
-    console.log("📦 Does body have files?", !!req.body.userSolutionFiles);
 
-    const { userSolutionFiles, testFileContent } = req.body;
-    const { challengeId } = req.params; // Get the ID from the URL parameters
+    // =================== THIS IS THE FIX ===================
 
+    // 1. Receive the data from the frontend. It has a 'testCode' property.
+    const { userSolutionFiles, testCode } = req.body;
+    const { challengeId } = req.params; // Get the ID from the URL
+
+    // 2. Check for the runner URL
     if (!process.env.RUNNER_URL) {
       throw new Error("RUNNER_URL environment variable is not set.");
     }
@@ -153,15 +156,20 @@ exports.runChallengeTests = async (req, res) => {
     const runnerEndpoint = `${process.env.RUNNER_URL}/api/run-tests`;
     console.log(`🚀 Forwarding test run request to: ${runnerEndpoint}`);
 
-    // 🔥 Send the request to the runner
-    const response = await axios.post(runnerEndpoint, {
+    // 3. Create the payload for the runner service.
+    //    The runner expects a property named 'testFileContent'.
+    const runnerPayload = {
       challengeId,
       userSolutionFiles,
-      testFileContent,
-    });
+      testFileContent: testCode, // <-- Translate the property name here
+    };
+
+    // 4. Send the correctly formatted payload to the runner.
+    const response = await axios.post(runnerEndpoint, runnerPayload);
+
+    // =======================================================
 
     console.log("✅ Runner response received:", response.data);
-
     res.status(200).json(response.data);
   } catch (error) {
     console.error("❌ Error forwarding test run to runner service:", {
@@ -170,18 +178,8 @@ exports.runChallengeTests = async (req, res) => {
       data: error.response?.data,
     });
 
-    // 🧠 Handle different cases
     if (error.response) {
-      const status = error.response.status;
-      const data = error.response.data || {};
-      const message =
-        status === 404
-          ? "Runner service not found — check RUNNER_URL or route path."
-          : status === 400
-          ? "Bad request sent to runner service."
-          : "Runner service error.";
-
-      return res.status(status).json({ error: message, details: data });
+      return res.status(error.response.status).json(error.response.data);
     }
 
     res
