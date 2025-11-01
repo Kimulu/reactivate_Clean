@@ -365,6 +365,8 @@ export default function ChallengeDetail() {
         const fetchedChallenge: Challenge = await apiClient.getChallengeById(
           id
         );
+        console.log("CHALLENGE DATA RECEIVED FROM BACKEND:", fetchedChallenge);
+
         setChallenge(fetchedChallenge);
 
         const userId = getCurrentUserId();
