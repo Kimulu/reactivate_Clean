@@ -1,6 +1,5 @@
 // packages/backend/express_backend/utils/testRunnerService.js
 
-// NEW: Import execSync to run commands directly
 const { execSync } = require("child_process");
 const fs = require("fs").promises;
 const path = require("path");
@@ -124,7 +123,7 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
 };
 
 // ===================================================================
-// === THIS IS THE REWRITTEN FUNCTION FOR THE RENDER DEPLOYMENT ===
+// === THIS IS THE FINAL, CORRECTED FUNCTION FOR THE RENDER DEPLOYMENT ===
 // ===================================================================
 exports.runTests = async (
   challengeId,
@@ -132,8 +131,8 @@ exports.runTests = async (
   testFileContent,
   colorize = true
 ) => {
-  // Create a unique temporary directory for this test run
-  const tempDir = path.join(__dirname, "..", "temp_challenge_runs", uuidv4());
+  // Define directories relative to the container's WORKDIR (/app)
+  const tempDir = path.join("/app", "temp_challenge_runs", uuidv4());
   let result = {
     passed: false,
     output: "Unexpected error during test execution.",
@@ -142,46 +141,68 @@ exports.runTests = async (
   let jsonOutput = "";
 
   try {
-    // 1. Set up the temporary directory with user files and test files
+    // 1. Set up the temporary directory
     await fs.mkdir(tempDir, { recursive: true });
 
+    // 2. Write all user-submitted solution files to the temp directory
     for (const filePath in userSolutionFiles) {
       const fullPath = path.join(tempDir, filePath);
       await fs.mkdir(path.dirname(fullPath), { recursive: true });
       await fs.writeFile(fullPath, userSolutionFiles[filePath]);
     }
 
+    // 3. Adjust and write the test file itself
     const adjustedTestContent = testFileContent
       .replace(/from\s+(['"])\.\.\//g, (match, quote) => `from ${quote}./`)
       .replace(/require\(['"]\.\.\//g, "require('./")
       .replace(/(\.\.\/)+/g, "./");
-
     const testPath = path.join(tempDir, "solution.test.js");
     await fs.writeFile(testPath, adjustedTestContent);
 
-    // 2. Define the path for Jest's JSON results
-    const resultsPath = path.join(tempDir, "jest-results.json");
-
-    // 3. Execute Jest directly using a child process. NO MORE DOCKER!
+    // 4. CRITICAL FIX: Copy Jest/Babel config files from the app's root into the temp directory.
+    //    These files were added to /app in the Dockerfile.
+    const configFilesToCopy = [
+      "babel.config.js",
+      "jest.config.js",
+      "setupTests.js",
+    ];
+    for (const file of configFilesToCopy) {
+      const srcPath = path.join("/app", file);
+      const destPath = path.join(tempDir, file);
+      try {
+        await fs.copyFile(srcPath, destPath);
+      } catch (e) {
+        console.warn(`Could not copy config file ${file}: ${e.message}`);
+      }
+    }
+    const mocksSrc = path.join("/app", "__mocks__");
+    const mocksDest = path.join(tempDir, "__mocks__");
     try {
-      // We run jest from within the temp directory (using `cwd`)
-      // This makes all the file imports like `require('./component.js')` work correctly.
+      await fsExtra.copy(mocksSrc, mocksDest);
+    } catch (e) {
+      console.warn(`Could not copy mocks directory: ${e.message}`);
+    }
+
+    // 5. Define the path for Jest's results and execute the test
+    const resultsPath = path.join(tempDir, "jest-results.json");
+    try {
+      // With the config files now present in the temp directory, Jest will work correctly.
       execSync(
-        `npx jest solution.test.js --json --outputFile=${resultsPath} --runInBand`,
-        { cwd: tempDir, stdio: "pipe" }
+        `npx jest --config jest.config.js --json --outputFile=${resultsPath} --runInBand`,
+        {
+          cwd: tempDir, // Run the command from within the temp directory
+          stdio: "pipe",
+        }
       );
     } catch (error) {
-      // execSync throws an error if the command returns a non-zero exit code.
-      // For Jest, this happens when tests fail, which is normal.
-      // We can safely ignore the error here because we will read the results
-      // from the JSON file regardless of whether the tests passed or failed.
+      // This is expected when tests fail. We read the results file regardless.
       console.log("Jest finished with failed tests, which is expected.");
     }
 
-    // 4. Read the results file that Jest created
+    // 6. Read the results file that Jest created
     jsonOutput = await fs.readFile(resultsPath, "utf8");
 
-    // 5. Parse the JSON output and convert to HTML
+    // 7. Parse the JSON output and convert to HTML
     const parsed = await parseJestOutput(jsonOutput, colorize);
     result = {
       passed: parsed.passed,
@@ -200,7 +221,7 @@ exports.runTests = async (
       detailedResults: [],
     };
   } finally {
-    // 6. Clean up the temporary directory
+    // 8. Clean up the temporary directory
     try {
       await fsExtra.remove(tempDir);
     } catch (cleanupError) {
