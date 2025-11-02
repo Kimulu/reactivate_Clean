@@ -154,7 +154,7 @@ exports.runTests = async (
     // 3. Adjust and write the test file itself
     const adjustedTestContent = testFileContent
       .replace(/from\s+(['"])\.\.\//g, (match, quote) => `from ${quote}./`)
-      .replace(/require\(['"])\.\.\//g, "require('./")
+      .replace(/require\((['"])\.\.\//g, "require($1./") // <-- CORRECTED VERSION
       .replace(/(\.\.\/)+/g, "./");
     const testPath = path.join(tempDir, "solution.test.js");
     await fs.writeFile(testPath, adjustedTestContent);
