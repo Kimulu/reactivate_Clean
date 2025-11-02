@@ -189,17 +189,20 @@ exports.runTests = async (
     const jestConfigPath = path.join(tempDir, "jest.config.js");
 
     try {
-      execSync(
-        `npx jest --config ${jestConfigPath} --json --outputFile=${resultsPath} --runInBand`,
-        {
-          cwd: tempDir,
-          stdio: "pipe",
-          env: { ...process.env, FORCE_COLOR: "0" },
-        }
-      );
+      console.log("📁 Running Jest inside:", tempDir);
+      console.log("📄 Jest config path:", jestConfigPath);
+      console.log("🧪 Available files:", await fs.readdir(tempDir));
+
+      execSync(`npx jest --runInBand --json --outputFile=jest-results.json`, {
+        cwd: tempDir,
+        stdio: "inherit", // ✅ So we see full logs in Render
+        env: { ...process.env, FORCE_COLOR: "0" },
+      });
     } catch (error) {
-      console.log("Jest finished (some tests may have failed).");
+      console.error("❗ Jest run error:", error.message);
     }
+
+    console.log("📂 Files in tempDir after Jest:", await fs.readdir(tempDir));
 
     // 6️⃣ Wait for Jest results file to appear (Render-safe)
     let retries = 0;
@@ -243,7 +246,7 @@ exports.runTests = async (
     // 8️⃣ Cleanup (delayed to avoid file race)
     try {
       await new Promise((r) => setTimeout(r, 300));
-      await fsExtra.remove(tempDir);
+      //await fsExtra.remove(tempDir);
     } catch (cleanupError) {
       console.warn("⚠️ Cleanup failed:", cleanupError.message);
     }

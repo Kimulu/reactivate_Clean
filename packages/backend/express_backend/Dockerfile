@@ -8,7 +8,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # 📦 Install ALL dependencies (including devDependencies like Jest)
-RUN npm install
+RUN npm install jest @testing-library/react @testing-library/jest-dom @testing-library/dom --save-dev
+
 
 # 🚚 Copy the rest of your backend's source code into the container
 COPY . .
