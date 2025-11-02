@@ -131,7 +131,7 @@ exports.runTests = async (
   testFileContent,
   colorize = true
 ) => {
-  // Define directories relative to the container's WORKDIR (/app)
+  // Use an absolute path for the temporary directory inside the container
   const tempDir = path.join("/app", "temp_challenge_runs", uuidv4());
   let result = {
     passed: false,
@@ -154,13 +154,12 @@ exports.runTests = async (
     // 3. Adjust and write the test file itself
     const adjustedTestContent = testFileContent
       .replace(/from\s+(['"])\.\.\//g, (match, quote) => `from ${quote}./`)
-      .replace(/require\(['"]\.\.\//g, "require('./")
+      .replace(/require\(['"])\.\.\//g, "require('./")
       .replace(/(\.\.\/)+/g, "./");
     const testPath = path.join(tempDir, "solution.test.js");
     await fs.writeFile(testPath, adjustedTestContent);
 
-    // 4. CRITICAL FIX: Copy Jest/Babel config files from the app's root into the temp directory.
-    //    These files were added to /app in the Dockerfile.
+    // 4. CRITICAL: Copy Jest/Babel config files from the app's root into the temp directory.
     const configFilesToCopy = [
       "babel.config.js",
       "jest.config.js",
@@ -183,26 +182,24 @@ exports.runTests = async (
       console.warn(`Could not copy mocks directory: ${e.message}`);
     }
 
-    // 5. Define the path for Jest's results and execute the test
+    // 5. Define paths and execute the test command
     const resultsPath = path.join(tempDir, "jest-results.json");
+    const jestConfigPath = path.join(tempDir, "jest.config.js"); // Use absolute path for config
     try {
-      // With the config files now present in the temp directory, Jest will work correctly.
+      // Pass the absolute config path to Jest to avoid ambiguity
       execSync(
-        `npx jest --config jest.config.js --json --outputFile=${resultsPath} --runInBand`,
+        `npx jest --config ${jestConfigPath} --json --outputFile=${resultsPath} --runInBand`,
         {
-          cwd: tempDir, // Run the command from within the temp directory
+          cwd: tempDir,
           stdio: "pipe",
         }
       );
     } catch (error) {
-      // This is expected when tests fail. We read the results file regardless.
       console.log("Jest finished with failed tests, which is expected.");
     }
 
-    // 6. Read the results file that Jest created
+    // 6. Read and parse the results
     jsonOutput = await fs.readFile(resultsPath, "utf8");
-
-    // 7. Parse the JSON output and convert to HTML
     const parsed = await parseJestOutput(jsonOutput, colorize);
     result = {
       passed: parsed.passed,
@@ -221,7 +218,7 @@ exports.runTests = async (
       detailedResults: [],
     };
   } finally {
-    // 8. Clean up the temporary directory
+    // 7. Clean up the temporary directory
     try {
       await fsExtra.remove(tempDir);
     } catch (cleanupError) {
