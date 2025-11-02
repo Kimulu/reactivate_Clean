@@ -166,10 +166,10 @@ exports.runTests = async (
     try {
       // We run jest from within the temp directory (using `cwd`)
       // This makes all the file imports like `require('./component.js')` work correctly.
-      execSync(`npx jest --json --outputFile=${resultsPath} --runInBand`, {
-        cwd: tempDir, // Set the current working directory for the command
-        stdio: "pipe", // Use 'pipe' to suppress console output from Jest
-      });
+      execSync(
+        `npx jest solution.test.js --json --outputFile=${resultsPath} --runInBand`,
+        { cwd: tempDir, stdio: "pipe" }
+      );
     } catch (error) {
       // execSync throws an error if the command returns a non-zero exit code.
       // For Jest, this happens when tests fail, which is normal.
