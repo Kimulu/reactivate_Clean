@@ -16,7 +16,9 @@ const converter = new AnsiToHtml({
   bg: "#1e1e1e",
 });
 
-// The parseJestOutput function is excellent and remains unchanged.
+// ===================================================================
+// === parseJestOutput (unchanged, robust parser) ====================
+// ===================================================================
 const parseJestOutput = async (jsonOutput, colorize = true) => {
   try {
     const data = JSON.parse(jsonOutput);
@@ -44,7 +46,6 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
       const hasFailures = testFile.assertionResults.some(
         (a) => a.status === "failed"
       );
-      const headerLabel = hasFailures ? " FAIL " : " PASS ";
       const badge = hasFailures
         ? chalk.bgRed.white.bold(` FAIL `)
         : chalk.bgGreen.black.bold(` PASS `);
@@ -123,7 +124,7 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
 };
 
 // ===================================================================
-// === THIS IS THE FINAL, CORRECTED FUNCTION FOR THE RENDER DEPLOYMENT ===
+// === Final Render-Safe Test Runner Function ========================
 // ===================================================================
 exports.runTests = async (
   challengeId,
@@ -131,8 +132,8 @@ exports.runTests = async (
   testFileContent,
   colorize = true
 ) => {
-  // Use an absolute path for the temporary directory inside the container
-  const tempDir = path.join("/app", "temp_challenge_runs", uuidv4());
+  // Use /tmp for safer ephemeral writes on Render
+  const tempDir = path.join("/tmp", "temp_challenge_runs", uuidv4());
   let result = {
     passed: false,
     output: "Unexpected error during test execution.",
@@ -141,25 +142,25 @@ exports.runTests = async (
   let jsonOutput = "";
 
   try {
-    // 1. Set up the temporary directory
+    // 1️⃣ Setup temporary directory
     await fs.mkdir(tempDir, { recursive: true });
 
-    // 2. Write all user-submitted solution files to the temp directory
+    // 2️⃣ Write all user files to tempDir
     for (const filePath in userSolutionFiles) {
       const fullPath = path.join(tempDir, filePath);
       await fs.mkdir(path.dirname(fullPath), { recursive: true });
       await fs.writeFile(fullPath, userSolutionFiles[filePath]);
     }
 
-    // 3. Adjust and write the test file itself
+    // 3️⃣ Write the test file (with adjusted imports)
     const adjustedTestContent = testFileContent
       .replace(/from\s+(['"])\.\.\//g, (match, quote) => `from ${quote}./`)
-      .replace(/require\((['"])\.\.\//g, "require($1./") // <-- CORRECTED VERSION
+      .replace(/require\((['"])\.\.\//g, "require($1./")
       .replace(/(\.\.\/)+/g, "./");
     const testPath = path.join(tempDir, "solution.test.js");
     await fs.writeFile(testPath, adjustedTestContent);
 
-    // 4. CRITICAL: Copy Jest/Babel config files from the app's root into the temp directory.
+    // 4️⃣ Copy Jest config + mocks into tempDir
     const configFilesToCopy = [
       "babel.config.js",
       "jest.config.js",
@@ -171,34 +172,55 @@ exports.runTests = async (
       try {
         await fs.copyFile(srcPath, destPath);
       } catch (e) {
-        console.warn(`Could not copy config file ${file}: ${e.message}`);
+        console.warn(`⚠️ Could not copy ${file}: ${e.message}`);
       }
     }
+
     const mocksSrc = path.join("/app", "__mocks__");
     const mocksDest = path.join(tempDir, "__mocks__");
     try {
       await fsExtra.copy(mocksSrc, mocksDest);
     } catch (e) {
-      console.warn(`Could not copy mocks directory: ${e.message}`);
+      console.warn(`⚠️ Could not copy mocks directory: ${e.message}`);
     }
 
-    // 5. Define paths and execute the test command
+    // 5️⃣ Run Jest inside the tempDir
     const resultsPath = path.join(tempDir, "jest-results.json");
-    const jestConfigPath = path.join(tempDir, "jest.config.js"); // Use absolute path for config
+    const jestConfigPath = path.join(tempDir, "jest.config.js");
+
     try {
-      // Pass the absolute config path to Jest to avoid ambiguity
       execSync(
         `npx jest --config ${jestConfigPath} --json --outputFile=${resultsPath} --runInBand`,
         {
           cwd: tempDir,
           stdio: "pipe",
+          env: { ...process.env, FORCE_COLOR: "0" },
         }
       );
     } catch (error) {
-      console.log("Jest finished with failed tests, which is expected.");
+      console.log("Jest finished (some tests may have failed).");
     }
 
-    // 6. Read and parse the results
+    // 6️⃣ Wait for Jest results file to appear (Render-safe)
+    let retries = 0;
+    const maxRetries = 10;
+    const delay = 300; // ms between retries
+
+    while (retries < maxRetries) {
+      try {
+        await fs.access(resultsPath);
+        break;
+      } catch {
+        await new Promise((r) => setTimeout(r, delay));
+        retries++;
+      }
+    }
+
+    if (retries === maxRetries) {
+      throw new Error("jest-results.json not found after waiting.");
+    }
+
+    // 7️⃣ Parse results
     jsonOutput = await fs.readFile(resultsPath, "utf8");
     const parsed = await parseJestOutput(jsonOutput, colorize);
     result = {
@@ -218,8 +240,9 @@ exports.runTests = async (
       detailedResults: [],
     };
   } finally {
-    // 7. Clean up the temporary directory
+    // 8️⃣ Cleanup (delayed to avoid file race)
     try {
+      await new Promise((r) => setTimeout(r, 300));
       await fsExtra.remove(tempDir);
     } catch (cleanupError) {
       console.warn("⚠️ Cleanup failed:", cleanupError.message);
