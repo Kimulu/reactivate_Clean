@@ -1,10 +1,8 @@
+const path = require("path");
+
 module.exports = {
   presets: [
-    ["@babel/preset-env", { targets: { node: "current" } }], // Transpile for the current Node.js version
-    ["@babel/preset-react", { runtime: "automatic" }], // Enable JSX transformation (React)
+    path.resolve("/app/node_modules/@babel/preset-env"),
+    path.resolve("/app/node_modules/@babel/preset-react"),
   ],
-  // You might need plugins for specific syntax, but presets often cover common cases.
-  // plugins: [
-  //   '@babel/plugin-proposal-class-properties', // Example
-  // ],
 };

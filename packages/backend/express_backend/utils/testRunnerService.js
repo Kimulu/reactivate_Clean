@@ -1,7 +1,6 @@
-// packages/backend/express_backend/utils/testRunnerService.js
-
 const { execSync } = require("child_process");
-const fs = require("fs").promises;
+const fs = require("fs").promises; // async fs for most ops
+const fsSync = require("fs"); // sync fs for symlink convenience
 const path = require("path");
 const fsExtra = require("fs-extra");
 const { v4: uuidv4 } = require("uuid");
@@ -16,9 +15,10 @@ const converter = new AnsiToHtml({
   bg: "#1e1e1e",
 });
 
-// ===================================================================
-// === parseJestOutput (unchanged, robust parser) ====================
-// ===================================================================
+/**
+ * parseJestOutput
+ * Robust parser for jest JSON results -> ANSI string summary
+ */
 const parseJestOutput = async (jsonOutput, colorize = true) => {
   try {
     const data = JSON.parse(jsonOutput);
@@ -123,36 +123,57 @@ const parseJestOutput = async (jsonOutput, colorize = true) => {
   }
 };
 
-// ===================================================================
-// === Final Render-Safe Test Runner Function ========================
-// ===================================================================
+/**
+ * runTests
+ * - Creates a per-run temp directory under /tmp
+ * - Symlinks /app/node_modules into the tempDir for zero-install speed
+ * - Copies minimal config files + mocks
+ * - Executes jest with an absolute config path
+ * - Waits for jest-results.json to appear (with retries)
+ * - Parses results and returns structured result (HTML output)
+ *
+ * Optimized for speed in containerized environments (Render/Docker).
+ */
 exports.runTests = async (
   challengeId,
   userSolutionFiles,
   testFileContent,
   colorize = true
 ) => {
-  // Use /tmp for safer ephemeral writes on Render
-  const tempDir = path.join("/tmp", "temp_challenge_runs", uuidv4());
+  // Per-run directory (unique)
+  const tempRunId = uuidv4();
+  const tempDir = path.join("/tmp", "temp_challenge_runs", tempRunId);
+
+  // Shared cache locations
+  const jestCacheDir = "/tmp/jest_cache"; // persistent for container lifecycle
+  const nodeModulesSrc = "/app/node_modules"; // preinstalled in image
+
   let result = {
     passed: false,
     output: "Unexpected error during test execution.",
     detailedResults: [],
   };
-  let jsonOutput = "";
 
   try {
-    // 1️⃣ Setup temporary directory
+    // Ensure shared cache dir exists (fast subsequent runs)
+    try {
+      await fs.mkdir(jestCacheDir, { recursive: true });
+    } catch (e) {
+      // non-fatal
+      console.warn("Could not ensure jest cache dir:", e.message);
+    }
+
+    // 1) create per-run directory
     await fs.mkdir(tempDir, { recursive: true });
 
-    // 2️⃣ Write all user files to tempDir
+    // 2) Write all user-submitted solution files to the temp directory
     for (const filePath in userSolutionFiles) {
       const fullPath = path.join(tempDir, filePath);
       await fs.mkdir(path.dirname(fullPath), { recursive: true });
       await fs.writeFile(fullPath, userSolutionFiles[filePath]);
     }
 
-    // 3️⃣ Write the test file (with adjusted imports)
+    // 3) Write the test file (with adjusted imports)
     const adjustedTestContent = testFileContent
       .replace(/from\s+(['"])\.\.\//g, (match, quote) => `from ${quote}./`)
       .replace(/require\((['"])\.\.\//g, "require($1./")
@@ -160,7 +181,8 @@ exports.runTests = async (
     const testPath = path.join(tempDir, "solution.test.js");
     await fs.writeFile(testPath, adjustedTestContent);
 
-    // 4️⃣ Copy Jest config + mocks into tempDir
+    // 4) Copy minimal config files into tempDir (babel/jest/setupTests)
+    // Use absolute /app paths as source - these exist in the image
     const configFilesToCopy = [
       "babel.config.js",
       "jest.config.js",
@@ -170,44 +192,129 @@ exports.runTests = async (
       const srcPath = path.join("/app", file);
       const destPath = path.join(tempDir, file);
       try {
-        await fs.copyFile(srcPath, destPath);
+        // Only copy when the source exists
+        if (fsSync.existsSync(srcPath)) {
+          await fs.copyFile(srcPath, destPath);
+        } else {
+          console.warn(`Config file missing in image: ${srcPath}`);
+        }
       } catch (e) {
-        console.warn(`⚠️ Could not copy ${file}: ${e.message}`);
+        console.warn(`Could not copy config file ${file}: ${e.message}`);
       }
     }
 
+    // Copy __mocks__ if present
     const mocksSrc = path.join("/app", "__mocks__");
     const mocksDest = path.join(tempDir, "__mocks__");
     try {
-      await fsExtra.copy(mocksSrc, mocksDest);
+      if (fsSync.existsSync(mocksSrc)) {
+        await fsExtra.copy(mocksSrc, mocksDest);
+      }
     } catch (e) {
-      console.warn(`⚠️ Could not copy mocks directory: ${e.message}`);
+      console.warn(`Could not copy mocks directory: ${e.message}`);
     }
 
-    // 5️⃣ Run Jest inside the tempDir
+    // 5) SYMLINK /app/node_modules into the temp run to avoid installs.
+    // This is the core speed optimization: zero installs, instant module resolution.
+    const nodeModulesDest = path.join(tempDir, "node_modules");
+    try {
+      if (
+        !fsSync.existsSync(nodeModulesDest) &&
+        fsSync.existsSync(nodeModulesSrc)
+      ) {
+        // Use junction on Windows compatibility if needed; sync is OK here
+        try {
+          fsSync.symlinkSync(nodeModulesSrc, nodeModulesDest, "dir");
+        } catch (symlinkErr) {
+          // On some restricted environments symlink may fail; fall back to copying small deps if necessary
+          console.warn(
+            "Symlink failed, attempting fs-extra copy as fallback:",
+            symlinkErr.message
+          );
+          await fsExtra.copy(nodeModulesSrc, nodeModulesDest, {
+            dereference: true,
+          });
+        }
+        console.log("✅ Linked /app/node_modules into temp run");
+      } else {
+        if (!fsSync.existsSync(nodeModulesSrc)) {
+          console.warn(
+            "⚠️ /app/node_modules not present in image; tests may attempt to install at runtime."
+          );
+        }
+      }
+    } catch (err) {
+      console.warn(
+        "⚠️ node_modules linking step encountered an error:",
+        err.message
+      );
+    }
+
+    // 6) Prepare the jest command and run
     const resultsPath = path.join(tempDir, "jest-results.json");
-    const jestConfigPath = path.join(tempDir, "jest.config.js");
+    const jestConfigPath = path.join(tempDir, "jest.config.js"); // absolute for reliability
+
+    // Ensure any leftover results file is removed
+    try {
+      if (fsSync.existsSync(resultsPath)) fsSync.unlinkSync(resultsPath);
+    } catch (_) {}
 
     try {
+      // Helpful runtime info in logs (keeps logs informative but not too noisy)
       console.log("📁 Running Jest inside:", tempDir);
       console.log("📄 Jest config path:", jestConfigPath);
-      console.log("🧪 Available files:", await fs.readdir(tempDir));
+      console.log("🧪 Files in tempDir before run:", await fs.readdir(tempDir));
 
-      execSync(`npx jest --runInBand --json --outputFile=jest-results.json`, {
+      // Build the command with explicit cacheDirectory for speed
+      // Use absolute config path to avoid ambiguity
+      const jestCommand = [
+        "npx",
+        "jest",
+        `--config=${jestConfigPath}`,
+        `--json`,
+        `--outputFile=${resultsPath}`,
+        `--runInBand`,
+        `--cache`,
+        `--cacheDirectory=${jestCacheDir}`,
+      ].join(" ");
+
+      // Run synchronously and capture output (pipe is slightly faster than inherit for our use)
+      // Use a reasonably small timeout so runaway processes don't hang the server forever (optional)
+      execSync(jestCommand, {
         cwd: tempDir,
-        stdio: "inherit", // ✅ So we see full logs in Render
-        env: { ...process.env, FORCE_COLOR: "0" },
+        stdio: "pipe",
+        env: {
+          ...process.env,
+          FORCE_COLOR: "0",
+          NODE_ENV: process.env.NODE_ENV || "test",
+        },
+        // timeout: 60 * 1000 // optional: set if you want a hard kill after X ms
       });
     } catch (error) {
-      console.error("❗ Jest run error:", error.message);
+      // Log the complete error object (message + stdout/stderr if available)
+      console.error("❗ Jest run error:", error.message || error);
+      if (error.stdout) {
+        try {
+          console.error("Jest stdout:", error.stdout.toString());
+        } catch (_) {}
+      }
+      if (error.stderr) {
+        try {
+          console.error("Jest stderr:", error.stderr.toString());
+        } catch (_) {}
+      }
+      // Continue to wait for results file — in many cases jest writes results even when exit code != 0
     }
 
-    console.log("📂 Files in tempDir after Jest:", await fs.readdir(tempDir));
+    // Quick listing after run for diagnostics
+    try {
+      console.log("📂 Files in tempDir after Jest:", await fs.readdir(tempDir));
+    } catch (_) {}
 
-    // 6️⃣ Wait for Jest results file to appear (Render-safe)
+    // 7) Wait for jest-results.json to appear (fast retry loop)
     let retries = 0;
-    const maxRetries = 10;
-    const delay = 300; // ms between retries
+    const maxRetries = 30; // increase to be robust but still bounded
+    const delay = 150; // ms between retries (short for speed)
 
     while (retries < maxRetries) {
       try {
@@ -223,9 +330,10 @@ exports.runTests = async (
       throw new Error("jest-results.json not found after waiting.");
     }
 
-    // 7️⃣ Parse results
-    jsonOutput = await fs.readFile(resultsPath, "utf8");
+    // 8) Read & parse results (this is the main output)
+    const jsonOutput = await fs.readFile(resultsPath, "utf8");
     const parsed = await parseJestOutput(jsonOutput, colorize);
+
     result = {
       passed: parsed.passed,
       output: converter.toHtml(parsed.output),
@@ -243,13 +351,18 @@ exports.runTests = async (
       detailedResults: [],
     };
   } finally {
-    // 8️⃣ Cleanup (delayed to avoid file race)
-    try {
-      await new Promise((r) => setTimeout(r, 300));
-      //await fsExtra.remove(tempDir);
-    } catch (cleanupError) {
-      console.warn("⚠️ Cleanup failed:", cleanupError.message);
-    }
+    // 9) Cleanup: remove the run directory asynchronously but don't block response
+    // We purposely do not block on cleanup to keep response latency fast.
+    (async () => {
+      try {
+        // Give a tiny grace period for file flush
+        await new Promise((r) => setTimeout(r, 250));
+        // Remove only the specific run folder
+        await fsExtra.remove(tempDir);
+      } catch (cleanupError) {
+        console.warn("⚠️ Cleanup failed:", cleanupError.message);
+      }
+    })();
   }
 
   return result;
