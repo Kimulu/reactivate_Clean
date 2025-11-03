@@ -16,7 +16,7 @@ const DynamicToaster = dynamic(
 
 function MyApp({ Component, pageProps }: AppProps) {
   // ✅ 2. Define your site's absolute URL
-  const siteUrl = "https://reactivate-two.vercel.app/"; // 👈 IMPORTANT: Replace with your actual domain
+  const siteUrl = "https://reactivate-two.vercel.app"; // 👈 IMPORTANT: Replace with your actual domain
 
   return (
     <Provider store={store}>
