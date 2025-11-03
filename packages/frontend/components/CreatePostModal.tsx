@@ -90,7 +90,9 @@ export function CreatePostModal({
       setSelectedChallengeId(undefined);
       setSubmissionCodeContent(undefined);
       onClose();
-    } catch (err) {
+    } catch {
+      // Intentionally not using the caught value; display a friendly message
+      // and avoid an unused-variable lint warning.
       toast.error("Failed to create post.");
     } finally {
       setIsLoading(false);
