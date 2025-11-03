@@ -60,7 +60,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         />
         <meta
           name="twitter:image"
-          content={`${siteUrl}/social-share-image.png`}
+          content={`${siteUrl}/social-share-image.PNG`}
         />
       </Head>
 
