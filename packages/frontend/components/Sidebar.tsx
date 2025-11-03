@@ -11,12 +11,13 @@ import {
   Settings,
   Menu, // Hamburger icon
   X, // Close icon
+  MessageSquare, // ✅ Import the new icon
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState } from "@/store"; // Make sure this path is correct
+import { RootState } from "@/store";
 import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation"; // Using next/navigation is robust
-import { clearUser } from "@/store/userSlice"; // Make sure this path is correct
+import { useRouter, usePathname } from "next/navigation";
+import { clearUser } from "@/store/userSlice";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
@@ -44,6 +45,8 @@ const SidebarContent = ({ onLinkClick }: { onLinkClick?: () => void }) => {
     { icon: Users, label: "Community", href: "/community" },
     { icon: Trophy, label: "Leaderboard", href: "/leaderboard" },
     { icon: Settings, label: "Settings", href: "/settings" },
+    // ✅ NEW: Feedback link added here
+    { icon: MessageSquare, label: "Feedback", href: "/Feedback" },
     { icon: UserIcon, label: "Profile", href: profileHref },
   ];
 
@@ -154,6 +157,8 @@ const SidebarContentMobile = ({
     { icon: Users, label: "Community", href: "/community" },
     { icon: Trophy, label: "Leaderboard", href: "/leaderboard" },
     { icon: Settings, label: "Settings", href: "/settings" },
+    // ✅ NEW: Feedback link added here
+    { icon: MessageSquare, label: "Feedback", href: "/Feedback" },
     { icon: UserIcon, label: "Profile", href: profileHref },
   ];
 
@@ -168,7 +173,7 @@ const SidebarContentMobile = ({
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a]">
-      {/* ✅ NEW: Header with Close Button */}
+      {/* Header with Close Button */}
       <div className="flex flex-shrink-0 items-center justify-between border-b border-white/10 p-4 sm:p-6 h-[73px]">
         <button
           onClick={onLinkClick}
@@ -247,8 +252,7 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
-  // Close mobile menu on route change. We avoid reading `isOpen` here
-  // to keep the dependency array stable and satisfy react-hooks lint.
+  // Close mobile menu on route change
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);

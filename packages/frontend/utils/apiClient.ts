@@ -6,6 +6,14 @@ interface ChallengeFile {
   hidden?: boolean;
   readOnly?: boolean;
 }
+// ✅ NEW: Interface for a submitted feedback object
+export interface Feedback {
+  _id: string;
+  user: string; // The ID of the user who submitted the feedback
+  message: string;
+  rating: number;
+  createdAt: string;
+}
 
 export interface Challenge {
   _id: string;
@@ -139,6 +147,18 @@ const authFetch = async (url: string, options: RequestInit = {}) => {
 };
 
 export const apiClient = {
+  // ✅ NEW: Post user feedback
+  postFeedback: async (
+    message: string,
+    rating: number
+  ): Promise<{ message: string; feedback: Feedback }> => {
+    const res = await authFetch(`/api/feedback`, {
+      method: "POST",
+      body: JSON.stringify({ message, rating }),
+    });
+    return res.json();
+  },
+
   loginUser: async (
     username: string,
     password: string
@@ -169,6 +189,38 @@ export const apiClient = {
       const errorData = await res.json().catch(() => null);
       throw new Error(errorData?.message || "Failed to signup");
     }
+    return res.json();
+  },
+  signupTester: async (
+    username: string,
+    email: string,
+    password: string,
+    developerInfo: {
+      experienceLevel: string;
+      favoriteStack: string;
+      challengesSolved?: number;
+      portfolio?: string;
+      github?: string;
+      linkedin?: string;
+      learningGoals?: string;
+    }
+  ): Promise<{ token: string; user: UserInfo }> => {
+    const res = await fetch(`${BASE_URL}/api/auth/signup-tester`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        email,
+        password,
+        ...developerInfo,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(errorData?.message || "Failed to signup tester");
+    }
+
     return res.json();
   },
 

@@ -5,11 +5,18 @@ import { Features } from "@/components/features";
 import { Stats } from "@/components/Stats";
 import { Community } from "@/components/Community";
 import { Zap, Heart } from "lucide-react";
+import { useState } from "react";
+import BetaBanner from "@/components/BetaBanner";
 
 export default function App() {
+  const [bannerVisible, setBannerVisible] = useState(true);
   return (
     <>
-      <Navbar />
+      {/* Banner */}
+      {bannerVisible && <BetaBanner onClose={() => setBannerVisible(false)} />}
+
+      {/* Navbar with dynamic offset */}
+      <Navbar offset={bannerVisible ? 40 : 0} />
       <main className="bg-black text-white min-h-[70vh]">
         <Hero />
       </main>

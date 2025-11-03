@@ -7,6 +7,8 @@ const userRoutes = require("./routes/userRoutes");
 const challengeRoutes = require("./routes/challengeRoutes");
 const communityRoutes = require("./routes/communityRoutes");
 const runnerRoutes = require("./routes/runnerRoutes");
+const feedbackRoutes = require("./routes/feedbackRoutes");
+const testerAuthRoutes = require("./routes/testerAuthRoutes");
 
 console.log("✅✅✅ --- server.js file loaded successfully! --- ✅✅✅");
 
@@ -41,6 +43,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/challenges", challengeRoutes);
 app.use("/api/community", communityRoutes);
 app.use("/api/runner", runnerRoutes); // Changed from "/" to "/api/runner"
+app.use("/api/feedback", feedbackRoutes);
+app.use("/api/auth", testerAuthRoutes);
 
 // 2. Simple "Heartbeat" route for the homepage
 app.get("/", (req, res) => {

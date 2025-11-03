@@ -70,7 +70,9 @@ export default function SettingsPage() {
       localStorage.setItem("editorTheme", editorTheme);
       localStorage.setItem("editorTabSize", editorTabSize);
       toast.success("Editor preferences saved.");
-    } catch (err) {
+    } catch {
+      // Intentionally not using the caught value here; show a friendly message
+      // and avoid an unused-variable lint warning.
       toast.error("Failed to save editor preferences.");
     } finally {
       setIsEditorSaving(false);
